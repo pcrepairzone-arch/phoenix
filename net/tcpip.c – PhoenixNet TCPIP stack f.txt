@@ -1,8 +1,0 @@
-/* tcpip.c – PhoenixNet TCP/IP stack for RISC OS Phoenix */
-#include "kernel.h"
-
-void net_rx_packet(netdev_t *dev, void *data, size_t len) {
-    // ... (full implementation)
-}
-
-// ... (all net functions, congestion, recovery, flow control)
