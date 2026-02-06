@@ -1,7 +1,7 @@
 /*
  * irq.c – GICv3 Interrupt Controller for RISC OS Phoenix
  * Includes GIC initialization, IPI setup, and handling
- * Author: R Andrews Grok 4 – 26 Nov 2025
+ * Author: Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"
@@ -40,6 +40,14 @@
 #define IPI_TLB_SHOOTDOWN 1
 #define IPI_RESCHEDULE    2
 
+/* IRQ handler type */
+typedef void (*irq_handler_t)(int vector, void *private);
+
+/* Per-vector handlers */
+static irq_handler_t irq_handlers[1024];
+static void *irq_priv[1024];
+static spinlock_t irq_lock = SPINLOCK_INIT;
+
 /* Per-CPU GIC redistributor */
 static void *gic_redist[MAX_CPUS];
 
@@ -69,7 +77,7 @@ static void gic_dist_init(void) {
 /* Initialize GICv3 redistributor (per-core) */
 static void gic_redist_init(int cpu_id)
 {
-    void *redist = ioremap(GIC_REDIST_BASE + cpu_id * 0x20000, 0x20000);
+    sd_redist = ioremap(GIC_REDIST_BASE + cpu_id * 0x20000, 0x20000);
 
     // Wake redistributor
     writel(0, redist + GICR_WAKER);
@@ -101,9 +109,72 @@ void irq_init(void)
     gic_redist_init(get_cpu_id());
 
     // Enable CPU interface
-    __asm__ volatile ("msr daifclr, #2");  // Enable IRQs
+    __asm__ volatile ("msr daifclr, #2");  // Unmask IRQs
 
     debug_print("GICv3 initialized – interrupts active\n");
+}
+
+/* Set IRQ handler */
+void irq_set_handler(int vector, irq_handler_t handler, void *private)
+{
+    unsigned long flags;
+    spin_lock_irqsave(&irq_lock, flags);
+
+    if (vector < 0 || vector >= 1024) {
+        spin_unlock_irqrestore(&irq_lock, flags);
+        return;
+    }
+
+    irq_handlers[vector] = handler;
+    irq_priv[vector] = private;
+
+    spin_unlock_irqrestore(&irq_lock, flags);
+}
+
+/* Unmask IRQ */
+void irq_unmask(int vector)
+{
+    void *redist = gic_redist[get_cpu_id()];
+
+    if (vector < 32) {
+        writel(1 << vector, redist + GICR_ISENABLER0);
+    } else {
+        // SPI/PPI – set in distributor
+        void *dist = ioremap(GIC_DIST_BASE, PAGE_SIZE);
+        writel(1 << (vector % 32), dist + GICD_ISENABLER(vector / 32));
+    }
+}
+
+/* EOI (End of Interrupt) */
+void irq_eoi(int vector)
+{
+    void *redist = gic_redist[get_cpu_id()];
+
+    if (vector < 32) {
+        writel(vector, redist + GICR_EOIR0);
+    } else {
+        // SPI EOI in distributor
+        void *dist = ioremap(GIC_DIST_BASE, PAGE_SIZE);
+        writel(vector, dist + GICD_EOIR(vector / 32));
+    }
+}
+
+/* IRQ handler entry – from assembly vectors */
+void irq_handler(void)
+{
+    void *redist = gic_redist[get_cpu_id()];
+    uint32_t iar = readl(redist + GICR_IAR0);
+    int irq = iar & 0x3FF;
+
+    if (irq == 1023) return;  // Spurious
+
+    if (irq_handlers[irq]) {
+        irq_handlers[irq](irq, irq_priv[irq]);
+    } else {
+        debug_print("Unhandled IRQ %d\n", irq);
+    }
+
+    writel(iar, redist + GICR_EOIR0);
 }
 
 /* Send IPI to target CPUs */
@@ -142,22 +213,5 @@ void ipi_handler(int ipi_id, uint64_t arg)
 
     // Ack IPI
     uint32_t iar = readl(gic_redist[get_cpu_id()] + GICR_ICPENDR0);
-    writel(iar, gic_redist[get_cpu_id()] + GICR_EOIR0);
-}
-
-/* IRQ handler entry – from assembly */
-void irq_handler(void)
-{
-    uint32_t iar = readl(gic_redist[get_cpu_id()] + GICR_IAR0);
-    int irq = iar & 0x3FF;
-
-    if (irq < 16) {
-        // SGI – IPI
-        ipi_handler(irq, 0);  // Arg from SGI if needed
-    } else {
-        // PPI/SPI – device interrupts
-        device_irq_handler(irq);
-    }
-
     writel(iar, gic_redist[get_cpu_id()] + GICR_EOIR0);
 }

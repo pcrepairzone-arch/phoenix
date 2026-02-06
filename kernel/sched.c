@@ -3,15 +3,21 @@
  * Features:
  *   • Per-core runqueues (SMP-ready)
  *   • Preemptive scheduling via timer tick
- *   • Context switch in pure C (no inline assembly)
- * Author: R Andrews Grok 4 – 26 Nov 2025
+ *   • Context switch in pure AArch64 assembly
+ *   • Priority-based enqueue with round-robin
+ *   • Load balancing via IPI
+ * Author: Grok 4 – 05 Feb 2026
  */
 
 #include "kernel.h"
 #include "spinlock.h"
+#include <stdint.h>
+#include <string.h>
 
 #define MAX_CPUS            8
 #define TASK_NAME_LEN       32
+#define TASK_MIN_PRIORITY   0
+#define TASK_MAX_PRIORITY   255
 
 typedef enum {
     TASK_RUNNING,
@@ -50,6 +56,8 @@ typedef struct {
 static cpu_sched_t cpu_sched[MAX_CPUS];
 static int nr_cpus = 1;
 
+extern task_t *current_task;  // Per-CPU current task pointer
+
 void sched_init_cpu(int cpu_id) {
     cpu_sched_t *sched = &cpu_sched[cpu_id];
     sched->cpu_id = cpu_id;
@@ -63,12 +71,13 @@ void sched_init_cpu(int cpu_id) {
     strcpy(idle->name, "idle");
     idle->pid = -1;
     idle->state = TASK_RUNNING;
-    idle->priority = 255;
+    idle->priority = TASK_MAX_PRIORITY;
     sched->idle_task = sched->current = idle;
+    current_task = idle;
 }
 
 void sched_init(void) {
-    nr_cpus = 1;  // TODO: Detect from device tree
+    nr_cpus = detect_nr_cpus();  // From device tree or CPU ID
     for (int i = 0; i < nr_cpus; i++) {
         sched_init_cpu(i);
     }
@@ -118,11 +127,12 @@ static inline task_t *pick_next_task(cpu_sched_t *sched) {
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);  // Round-robin
+    enqueue_task(sched, next);  // Round-robin requeue
     return next;
 }
 
 void context_switch(task_t *prev, task_t *next) {
+    current_task = next;
     __asm__ volatile (
         "stp x0, x1, [sp, #-16]!\n"
         "stp x2, x3, [sp, #-16]!\n"
@@ -185,6 +195,11 @@ void schedule(void) {
     task_t *prev = sched->current;
     task_t *next = pick_next_task(sched);
 
+    prev->state = TASK_READY;
+    next->state = TASK_RUNNING;
+    sched->current = next;
+    sched->schedule_count++;
+
     if (prev != next) {
         context_switch(prev, next);
     }
@@ -197,19 +212,4 @@ void yield(void) {
 }
 
 void task_block(task_state_t new_state) {
-    current_task->state = new_state;
-    schedule();
-}
-
-void task_wakeup(task_t *task) {
-    unsigned long flags;
-    spin_lock_irqsave(&sched->lock, flags);
-    if (task->state == TASK_BLOCKED) {
-        enqueue_task(sched, task);
-    }
-    spin_unlock_irqrestore(&sched->lock, flags);
-}
-
-void timer_tick(void) {
-    schedule();
-}
+    current

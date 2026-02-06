@@ -1,7 +1,7 @@
 /*
  * task.c – Task management for RISC OS Phoenix
  * Includes task_create, fork, execve, wait
- * Author: R Andrews Grok 4 – 26 Nov 2025
+ * Author: Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"
@@ -41,7 +41,9 @@ task_t *task_create(const char *name, void (*entry)(void), int priority, uint64_
     task->elr_el1 = (uint64_t)entry;
     task->spsr_el1 = 0;  // EL0, interrupts enabled
 
-    int cpu = get_cpu_id();
+    mmu_init_task(task);
+
+    int cpu = __builtin_ctzll(task->cpu_affinity);  // First affinity CPU
     cpu_sched_t *sched = &cpu_sched[cpu];
     unsigned long flags;
     spin_lock_irqsave(&sched->lock, flags);
@@ -84,47 +86,4 @@ int fork(void)
     cpu_sched_t *sched = &cpu_sched[cpu];
     unsigned long flags;
     spin_lock_irqsave(&sched->lock, flags);
-    enqueue_task(sched, child);
-    spin_unlock_irqrestore(&sched->lock, flags);
-
-    return child_pid;  // Parent returns child PID
-}
-
-int execve(const char *pathname, char *const argv[], char *const envp[])
-{
-    task_t *task = current_task;
-    file_t *file = vfs_open(pathname, O_RDONLY);
-    if (!file) return -1;
-
-    Elf64_Ehdr ehdr;
-    if (vfs_read(file, &ehdr, sizeof(ehdr)) != sizeof(ehdr)) goto fail;
-
-    if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0 ||
-        ehdr.e_ident[EI_CLASS] != ELFCLASS64 ||
-        ehdr.e_ident[EI_DATA] != ELFDATA2LSB ||
-        ehdr.e_machine != EM_AARCH64) goto fail;
-
-    mmu_free_usermemory(task);
-
-    uint64_t entry = ehdr.e_entry;
-    uint64_t phoff = ehdr.e_phoff;
-
-    for (int i = 0; i < ehdr.e_phnum; i++) {
-        Elf64_Phdr phdr;
-        vfs_seek(file, phoff + i * ehdr.e_phentsize, SEEK_SET);
-        vfs_read(file, &phdr, sizeof(phdr));
-
-        if (phdr.p_type == PT_LOAD) {
-            void *page = kmalloc((phdr.p_memsz + PAGE_SIZE - 1) & PAGE_MASK);
-            vfs_seek(file, phdr.p_offset, SEEK_SET);
-            vfs_read(file, page, phdr.p_filesz);
-            memset(page + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
-
-            mmu_map(task, phdr.p_vaddr, phdr.p_memsz, phdr.p_flags, 0);
-        }
-    }
-
-    vfs_close(file);
-
-    uint64_t sp = 0x0000fffffffff000ULL;
-    int argc = 0, env
+    enqueue
