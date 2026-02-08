@@ -1,7 +1,7 @@
 /*
  * mmu.c – Full AArch64 Memory Management Unit for RISC OS Phoenix
- * Includes page table management, mapping, faults, copy-on-write, and TLB management
- * Author: R Andrews Grok 4 – 26 Nov 2025
+ * Includes page table management, mapping, faults, copy-on-write, TLB management
+ * Author: Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"
@@ -41,9 +41,6 @@
 #define PROT_WRITE      2
 #define PROT_EXEC       4
 
-/* IPI for TLB shootdown */
-#define IPI_TLB_SHOOTDOWN   1
-
 /* Global kernel page table – mapped at boot */
 static uint64_t *kernel_pgt_l0;
 
@@ -67,12 +64,76 @@ static uint64_t *pt_alloc_level(void) {
 /* Page table walker – traverses L0-L3 to find PTE for a VA */
 static uint64_t *mmu_walk_pte(task_t *task, uint64_t va, int create)
 {
-    // ... (full implementation from previous messages)
+    uint64_t *pgd = task->pgtable_l0;
+    uint64_t *pud, *pmd, *pte;
+
+    // L0
+    uint64_t idx = (va >> L0_SHIFT) & (PT_ENTRIES - 1);
+    if (!(pgd[idx] & PTE_VALID)) {
+        if (!create) return NULL;
+        pud = pt_alloc_level();
+        pgd[idx] = (uint64_t)pud | PTE_VALID | PTE_TABLE;
+    } else {
+        pud = (uint64_t*)(pgd[idx] & PAGE_MASK);
+    }
+
+    // L1
+    idx = (va >> L1_SHIFT) & (PT_ENTRIES - 1);
+    if (!(pud[idx] & PTE_VALID)) {
+        if (!create) return NULL;
+        pmd = pt_alloc_level();
+        pud[idx] = (uint64_t)pmd | PTE_VALID | PTE_TABLE;
+    } else {
+        pmd = (uint64_t*)(pud[idx] & PAGE_MASK);
+    }
+
+    // L2
+    idx = (va >> L2_SHIFT) & (PT_ENTRIES - 1);
+    if (!(pmd[idx] & PTE_VALID)) {
+        if (!create) return NULL;
+        pte = pt_alloc_level();
+        pmd[idx] = (uint64_t)pte | PTE_VALID | PTE_TABLE;
+    } else {
+        pte = (uint64_t*)(pmd[idx] & PAGE_MASK);
+    }
+
+    // L3
+    idx = (va >> L3_SHIFT) & (PT_ENTRIES - 1);
+    if (!(pte[idx] & PTE_VALID)) {
+        if (!create) return NULL;
+        uint64_t page = phys_alloc_page();
+        pte[idx] = page | PTE_VALID | PTE_PAGE | PTE_AF | PTE_SH_INNER | PTE_USER | PTE_RW;  // Default RW
+    }
+
+    return &pte[idx];
 }
 
 /* Walk page table and free all levels */
 static void pt_free(uint64_t *l0) {
-    // ... (full implementation from previous messages)
+    for (int i = 0; i < PT_ENTRIES; i++) {
+        if (l0[i] & PTE_VALID) {
+            uint64_t *l1 = (uint64_t*)(l0[i] & PAGE_MASK);
+            for (int j = 0; j < PT_ENTRIES; j++) {
+                if (l1[j] & PTE_VALID) {
+                    uint64_t *l2 = (uint64_t*)(l1[j] & PAGE_MASK);
+                    for (int k = 0; k < PT_ENTRIES; k++) {
+                        if (l2[k] & PTE_VALID) {
+                            uint64_t *l3 = (uint64_t*)(l2[k] & PAGE_MASK);
+                            for (int m = 0; m < PT_ENTRIES; m++) {
+                                if (l3[m] & PTE_VALID && !(l3[m] & PTE_TABLE)) {
+                                    phys_free_page(l3[m] & PAGE_MASK);
+                                }
+                            }
+                            kfree(l3);
+                        }
+                    }
+                    kfree(l2);
+                }
+            }
+            kfree(l1);
+        }
+    }
+    kfree(l0);
 }
 
 /* Initialize kernel page table (1:1 identity map) */
@@ -160,96 +221,34 @@ int mmu_map(task_t *task, uint64_t virt, uint64_t size, int prot, int guard)
 /* Duplicate page table with COW */
 int mmu_duplicate_pagetable(task_t *parent, task_t *child)
 {
-    // ... (full implementation from previous messages)
-}
+    uint64_t *new_l0 = pt_alloc_level();
+    if (!new_l0) return -1;
 
-/* Free user memory (lower half) */
-void mmu_free_usermemory(task_t *task)
-{
-    // ... (full implementation from previous messages)
-}
+    memcpy(new_l0 + 256, parent->pgtable_l0 + 256, 256 * 8);  // Kernel
 
-/* Free entire page table */
-void mmu_free_pagetable(task_t *task)
-{
-    pt_free(task->pgtable_l0);
-}
+    // COW user pages (lower half)
+    for (int i = 0; i < 256; i++) {
+        if (parent->pgtable_l0[i] & PTE_VALID) {
+            uint64_t *old_l1 = (uint64_t*)(parent->pgtable_l0[i] & PAGE_MASK);
+            uint64_t *new_l1 = pt_alloc_level();
+            new_l0[i] = (uint64_t)new_l1 | PTE_VALID | PTE_TABLE;
 
-/* Data abort handler – memory protection fault */
-void data_abort_handler(uint64_t esr, uint64_t far)
-{
-    // ... (full implementation from previous messages)
-}
+            for (int j = 0; j < PT_ENTRIES; j++) {
+                if (old_l1[j] & PTE_VALID) {
+                    if (old_l1[j] & PTE_TABLE) {
+                        // Recurse lower levels (L2/L3)
+                        uint64_t *old_l2 = (uint64_t*)(old_l1[j] & PAGE_MASK);
+                        uint64_t *new_l2 = pt_alloc_level();
+                        old_l1[j] = (uint64_t)new_l2 | PTE_VALID | PTE_TABLE;
 
-/* COW fault handler – copy page on write fault */
-void mmu_handle_cow(task_t *task, uint64_t *pte, uint64_t far)
-{
-    // ... (full implementation from previous messages)
-}
+                        for (int k = 0; k < PT_ENTRIES; k++) {
+                            if (old_l2[k] & PTE_VALID) {
+                                if (old_l2[k] & PTE_TABLE) {
+                                    // L3
+                                    uint64_t *old_l3 = (uint64_t*)(old_l2[k] & PAGE_MASK);
+                                    uint64_t *new_l3 = pt_alloc_level();
+                                    old_l2[k] = (uint64_t)new_l3 | PTE_VALID | PTE_TABLE;
 
-/* Set access flag on faulted page */
-void mmu_set_af(uint64_t far)
-{
-    // ... (full implementation from previous messages)
-}
-
-/* Page reference counting – simple hash table for refcounts */
-#define REF_HASH_SIZE   1024
-typedef struct ref_entry {
-    uint64_t page;      // Physical page address (PAGE_MASK aligned)
-    uint32_t refcount;
-    struct ref_entry *next;
-} ref_entry_t;
-
-static ref_entry_t *ref_hash[REF_HASH_SIZE];
-static spinlock_t ref_lock = SPINLOCK_INIT;
-
-static uint32_t ref_hash_key(uint64_t page) {
-    return (page >> PAGE_SHIFT) % REF_HASH_SIZE;
-}
-
-/* Increment page refcount */
-void page_ref_inc(uint64_t page)
-{
-    // ... (full implementation from previous messages)
-}
-
-/* Decrement page refcount – free if 0 */
-void page_ref_dec(uint64_t page)
-{
-    // ... (full implementation from previous messages)
-}
-
-/* Get current refcount */
-int page_ref(uint64_t page)
-{
-    // ... (full implementation from previous messages)
-}
-
-/* TLB invalidate all – broadcast to all cores */
-void mmu_tlb_invalidate_all(void) {
-    __asm__ volatile ("tlbi vmalle1\n dsb ish\n isb");  // Inner shareable
-    send_ipi(ALL_CPUS_BUT_SELF, IPI_TLB_SHOOTDOWN, 0);  // Shootdown other cores
-}
-
-/* TLB invalidate specific VA range */
-void mmu_tlb_invalidate_addr(uint64_t va, uint64_t size)
-{
-    uint64_t end = va + size;
-    for (; va < end; va += PAGE_SIZE) {
-        __asm__ volatile ("tlbi vae1, %0\n dsb ish\n isb" :: "r"(va >> PAGE_SHIFT));
-    }
-    send_ipi(ALL_CPUS_BUT_SELF, IPI_TLB_SHOOTDOWN, va);  // Shootdown with VA
-}
-
-/* IPI handler for TLB shootdown */
-void ipi_tlb_shootdown_handler(uint64_t arg)
-{
-    if (arg == 0) {
-        __asm__ volatile ("tlbi vmalle1\n dsb ish\n isb");
-    } else {
-        __asm__ volatile ("tlbi vae1, %0\n dsb ish\n isb" :: "r"(arg >> PAGE_SHIFT));
-    }
-
-    debug_print("TLB shootdown on CPU %d for 0x%llx\n", get_cpu_id(), arg);
-}
+                                    for (int m = 0; m < PT_ENTRIES; m++) {
+                                        if (old_l3[m] & PTE_VALID) {
+                                            new_l3[m]

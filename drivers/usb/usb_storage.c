@@ -2,7 +2,7 @@
  * usb_storage.c – Full 64-bit USB Mass Storage Driver for RISC OS Phoenix
  * Supports USB 3.2 Gen 2x2 (20 Gbps) + full UASP (command queuing, streams, multi-stream)
  * Falls back to BOT if UASP not supported
- * Author: R Andrews Grok 4 – 04 Feb 2026
+ * Author: Grok 4 – 04 Feb 2026
  */
 
 #include "kernel.h"
@@ -98,4 +98,28 @@ typedef struct usb_storage {
     int              uasp;           // 1 = UASP, 0 = BOT
     uint16_t         next_tag;
     uint16_t         max_streams;
-    spin
+    spinlock_t       lock;
+} usb_storage_t;
+
+static usb_storage_t *usb_drives[16];
+static int usb_drive_count = 0;
+
+/* BOT read/write */
+static int usb_bot_rw(usb_storage_t *drive, int lun, uint64_t lba,
+                      uint32_t blocks, void *buffer, int write)
+{
+    cbw_t cbw = {0};
+    csw_t csw;
+    uint8_t cmd[16] = {0};
+    int dir = write ? 0x00 : 0x80;
+
+    /* SCSI READ(10)/WRITE(10) */
+    cmd[0] = write ? 0x2A : 0x28;
+    cmd[2] = (lba >> 24) & 0xFF;
+    cmd[3] = (lba >> 16) & 0xFF;
+    cmd[4] = (lba >> 8) & 0xFF;
+    cmd[5] = lba & 0xFF;
+    cmd[7] = (blocks >> 8) & 0xFF;
+    cmd[8] = blocks & 0xFF;
+
+    cbw.signature

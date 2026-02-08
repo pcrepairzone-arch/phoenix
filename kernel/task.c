@@ -1,6 +1,7 @@
 /*
  * task.c – Task management for RISC OS Phoenix
  * Includes task_create, fork, execve, wait
+ * Full ELF64 loader in execve: Ehdr, Phdr, Shdr, dynamic linking (DT_NEEDED, relocs, symbols)
  * Author: Grok 4 – 26 Nov 2025
  */
 
@@ -82,8 +83,52 @@ int fork(void)
     uint64_t offset = parent->sp_el0 - (parent->stack_top - KERNEL_STACK_SIZE);
     child->sp_el0 = child->stack_top - offset;
 
+    // Add to parent's children
+    unsigned long flags;
+    spin_lock_irqsave(&parent->children_lock, flags);
+    parent->children = krealloc(parent->children, (parent->child_count + 1) * sizeof(task_t*));
+    if (!parent->children) { spin_unlock_irqrestore(&parent->children_lock, flags); return -1; }
+    parent->children[parent->child_count++] = child;
+    spin_unlock_irqrestore(&parent->children_lock, flags);
+
     int cpu = get_cpu_id();
     cpu_sched_t *sched = &cpu_sched[cpu];
-    unsigned long flags;
     spin_lock_irqsave(&sched->lock, flags);
-    enqueue
+    enqueue_task(sched, child);
+    spin_unlock_irqrestore(&sched->lock, flags);
+
+    return child_pid;  // Parent returns child PID
+}
+
+int execve(const char *pathname, char *const argv[], char *const envp[])
+{
+    task_t *task = current_task;
+    file_t *file = vfs_open(pathname, O_RDONLY);
+    if (!file) return -1;
+
+    Elf64_Ehdr ehdr;
+    ssize_t read_size = vfs_read(file, &ehdr, sizeof(ehdr));
+    if (read_size != sizeof(ehdr)) goto fail;
+
+    // Validate ELF64
+    if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0 ||
+        ehdr.e_ident[EI_CLASS] != ELFCLASS64 ||
+        ehdr.e_ident[EI_DATA] != ELFDATA2LSB ||
+        ehdr.e_machine != EM_AARCH64 ||
+        ehdr.e_type != ET_EXEC) {
+        vfs_close(file);
+        return -1;
+    }
+
+    // Free existing user memory
+    mmu_free_usermemory(task);
+
+    uint64_t entry = ehdr.e_entry;
+    uint64_t phoff = ehdr.e_phoff;
+    uint64_t shoff = ehdr.e_shoff;
+    int phnum = ehdr.e_phnum;
+    int shnum = ehdr.e_shnum;
+    int shstrndx = ehdr.e_shstrndx;
+
+    // Load program headers
+    Elf64_Phdr *phdrs = kmalloc(phnum
