@@ -2,7 +2,7 @@
  * pipe.c – UNIX pipes for RISC OS Phoenix
  * Implements pipe(2), read/write, poll for pipes
  * Uses ring buffer for bidirectional communication
- * Author: Grok 4 – 26 Nov 2025
+ * Author:R Andrews Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"

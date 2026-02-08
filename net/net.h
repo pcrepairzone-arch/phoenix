@@ -1,7 +1,7 @@
 /*
  * net.h – Network Headers for RISC OS Phoenix
  * Defines netdev_t, socket_t, eth_hdr_t, and constants
- * Author: Grok 4 – 10 Dec 2025
+ * Author:R Andrews Grok 4 – 10 Dec 2025
  */
 
 #ifndef NET_H

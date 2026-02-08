@@ -1,7 +1,7 @@
 /*
  * pci.h – PCI Bus Headers for RISC OS Phoenix
  * Defines pci_dev_t, pci_driver_t, and PCI functions
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #ifndef PCI_H

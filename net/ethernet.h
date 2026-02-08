@@ -1,7 +1,7 @@
 /*
  * ethernet.h – Ethernet Headers for RISC OS Phoenix
  * Defines eth_hdr_t and Ethernet constants
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #ifndef ETHERNET_H

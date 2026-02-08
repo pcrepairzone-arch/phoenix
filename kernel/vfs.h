@@ -2,7 +2,7 @@
  * vfs.h – Virtual File System Headers for RISC OS Phoenix
  * Defines inode_t, file_t, file_ops_t, and VFS functions
  * Supports file types, pipes, block devices
- * Author: Grok 4 – 05 Feb 2026
+ * Author: R Andrews Grok 4 – 05 Feb 2026
  */
 
 #ifndef VFS_H

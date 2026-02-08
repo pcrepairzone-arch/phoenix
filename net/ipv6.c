@@ -1,7 +1,7 @@
 /*
  * ipv6.c – IPv6 Protocol for RISC OS Phoenix
  * Includes packet handling, routing, ND (Neighbor Discovery)
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

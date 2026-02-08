@@ -1,7 +1,7 @@
 /*
  * pci.c – PCI Bus Driver for RISC OS Phoenix
  * Scans PCI bus, registers devices, maps BARs
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

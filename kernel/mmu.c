@@ -1,7 +1,7 @@
 /*
  * mmu.c – Full AArch64 Memory Management Unit for RISC OS Phoenix
  * Includes page table management, mapping, faults, copy-on-write, TLB management
- * Author: Grok 4 – 26 Nov 2025
+ * Author: R Andrews Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"

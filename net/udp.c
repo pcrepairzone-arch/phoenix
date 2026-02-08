@@ -1,7 +1,7 @@
 /*
  * udp.c – UDP Protocol for RISC OS Phoenix
  * Includes packet handling, checksum, socket integration
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

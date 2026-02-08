@@ -1,7 +1,7 @@
 /*
  * tcpip.c – PhoenixNet TCP/IP Stack for RISC OS Phoenix
  * Full 64-bit IPv4/IPv6, TCP/UDP/ICMP, sockets, multi-core
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

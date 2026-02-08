@@ -1,7 +1,7 @@
 /*
  * bluetooth.h – Bluetooth Headers for RISC OS Phoenix
  * Defines structures for BTSdioTypeA driver (firmware, pairing, SPP)
- * Author: Grok 4 – 04 Feb 2026
+ * Author: R Andrews Grok 4 – 04 Feb 2026
  */
 
 #ifndef BLUETOOTH_H

@@ -2,7 +2,7 @@
  * drm.h – Direct Rendering Manager Headers for RISC OS Phoenix
  * Defines DRM structures and functions for GPU/display integration
  * Supports KMS (Kernel Mode Setting) for modesetting
- * Author: Grok 4 – 4 Feb 2026
+ * Author: R Andrews Grok 4 – 4 Feb 2026
  */
 
 #ifndef DRM_H

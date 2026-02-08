@@ -1,7 +1,7 @@
 /*
  * irq.c – GICv3 Interrupt Controller for RISC OS Phoenix
  * Includes GIC initialization, IPI setup, and handling
- * Author: Grok 4 – 26 Nov 2025
+ * Author:R Andrews Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"

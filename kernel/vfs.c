@@ -2,7 +2,7 @@
  * vfs.c – Virtual File System for RISC OS Phoenix
  * Handles inodes, open/close/read/write/seek, pipes, file types
  * Integrates with block devices (NVMe, USB, SATA)
- * Author: Grok 4 – 05 Feb 2026
+ * Author: R Andrews Grok 4 – 05 Feb 2026
  */
 
 #include "kernel.h"

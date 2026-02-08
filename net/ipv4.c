@@ -1,7 +1,7 @@
 /*
  * ipv4.c – IPv4 Protocol for RISC OS Phoenix
  * Includes packet handling, routing, fragmentation, ARP
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

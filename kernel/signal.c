@@ -2,7 +2,7 @@
  * signal.c – POSIX signals for RISC OS Phoenix
  * Supports signal, sigaction, kill, sigreturn
  * Added handlers for SIGTERM, SIGINT, SIGQUIT, SIGCHLD, SIGUSR1, SIGUSR2
- * Author: Grok 4 – 26 Nov 2025
+ * Author:R Andrews Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"

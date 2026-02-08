@@ -1,7 +1,7 @@
 /*
  * mmc.h – MMC/SD Headers for RISC OS Phoenix
  * Defines mmc_ctrl_t, SDHCI registers, MMC commands
- * Author: Grok 4 – 06 Feb 2026
+ * Author: R Andrews Grok 4 – 06 Feb 2026
  */
 
 #ifndef MMC_H

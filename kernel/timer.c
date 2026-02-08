@@ -2,7 +2,7 @@
  * timer.c – ARM Generic Timer for RISC OS Phoenix
  * Provides microsecond precision timers, periodic ticks for scheduler
  * Multi-core support with per-core timers
- * Author: Grok 4 – 05 Feb 2026
+ * Author: R Andrews Grok 4 – 05 Feb 2026
  */
 
 #include "kernel.h"

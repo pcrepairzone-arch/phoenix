@@ -1,7 +1,7 @@
 /*
  * socket.c – BSD Socket API for RISC OS Phoenix
  * Implements socket, bind, listen, accept, connect, send, recv
- * Author: Grok 4 – 10 Dec 2025
+ * Author:R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

@@ -1,7 +1,7 @@
 /*
  * tcp.c – TCP Protocol for RISC OS Phoenix
  * Includes connection management, congestion control (BBR v2, CUBIC), flow control, fast recovery (NewReno, SACK, RACK)
- * Author: Grok 4 – 10 Dec 2025
+ * Author: GrokR Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

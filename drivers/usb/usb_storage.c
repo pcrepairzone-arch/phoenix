@@ -2,7 +2,7 @@
  * usb_storage.c – Full 64-bit USB Mass Storage Driver for RISC OS Phoenix
  * Supports USB 3.2 Gen 2x2 (20 Gbps) + full UASP (command queuing, streams, multi-stream)
  * Falls back to BOT if UASP not supported
- * Author: Grok 4 – 04 Feb 2026
+ * Author: R Andrews Grok 4 – 04 Feb 2026
  */
 
 #include "kernel.h"

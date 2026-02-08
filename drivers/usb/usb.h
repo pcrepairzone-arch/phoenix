@@ -2,7 +2,7 @@
  * usb.h – USB Headers for RISC OS Phoenix
  * Defines USB structures, class drivers, transfer functions
  * Supports USB 3.2 + UASP streams
- * Author: Grok 4 – 04 Feb 2026
+ * Author: R Andrews Grok 4 – 04 Feb 2026
  */
 
 #ifndef USB_H

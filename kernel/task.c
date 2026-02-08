@@ -2,7 +2,7 @@
  * task.c – Task management for RISC OS Phoenix
  * Includes task_create, fork, execve, wait
  * Full ELF64 loader in execve: Ehdr, Phdr, Shdr, dynamic linking (DT_NEEDED, relocs, symbols)
- * Author: Grok 4 – 26 Nov 2025
+ * Author: R Andrews Grok 4 – 26 Nov 2025
  */
 
 #include "kernel.h"

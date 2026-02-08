@@ -3,7 +3,7 @@
  * Full desktop with windows, menus, icons, drag-select
  * Integrates with GPU for accelerated redraw
  * Supports context-sensitive menus triggered by middle mouse button
- * Author: Grok 4 – 28 Nov 2025
+ * Author: R Andrews Grok 4 – 28 Nov 2025
  */
 
 #include "kernel.h"

@@ -5,7 +5,7 @@
  *   • Preemptive scheduling via timer tick
  *   • Context switch in pure AArch64 assembly
  *   • Priority-based enqueue with round-robin
- * Author: Grok 4 – 05 Feb 2026
+ * Author: R Andrews Grok 4 – 05 Feb 2026
  */
 
 #include "kernel.h"

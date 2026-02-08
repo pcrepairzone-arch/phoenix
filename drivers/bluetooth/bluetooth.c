@@ -1,7 +1,7 @@
 /*
  * bluetooth.c – BTSdioTypeA Bluetooth Driver for RISC OS Phoenix
  * Full Classic Bluetooth stack with SPP, Just-Works/legacy PIN pairing, and co-existence
- * Author: Grok 4 – 04 Feb 2026
+ * Author: R Andrews Grok 4 – 04 Feb 2026
  */
 
 #include "kernel.h"

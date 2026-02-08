@@ -1,7 +1,7 @@
 /*
  * arp.c – ARP (Address Resolution Protocol) for RISC OS Phoenix
  * Handles ARP requests/replies, cache management
- * Author: Grok 4 – 10 Dec 2025
+ * Author: R Andrews Grok 4 – 10 Dec 2025
  */
 
 #include "kernel.h"

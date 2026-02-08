@@ -2,7 +2,7 @@
  * blockdriver.c – Block Device Driver Glue for RISC OS Phoenix
  * Integrates block devices (NVMe, USB, SATA, MMC) with VFS
  * Handles mounting, I/O dispatch, multi-device support
- * Author: Grok 4 – 06 Feb 2026
+ * Author: R Andrews Grok 4 – 06 Feb 2026
  */
 
 #include "kernel.h"
