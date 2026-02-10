@@ -1,5 +1,5 @@
 # Makefile for RISC OS Phoenix
-# Build on Raspberry Pi 5 (native)
+# Build on Raspberry Pi 5 or any Linux machine with AArch64 toolchain
 
 CC = aarch64-linux-gnu-gcc
 AS = aarch64-linux-gnu-as
@@ -7,13 +7,13 @@ LD = aarch64-linux-gnu-ld
 OBJCOPY = aarch64-linux-gnu-objcopy
 
 CFLAGS = -Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only \
-         -nostdlib -fno-builtin -Ikernel
+         -nostdlib -fno-builtin -Ikernel -I.
 ASFLAGS = -mcpu=cortex-a72
 LDFLAGS = -T kernel/linker.ld -nostdlib -static
 
-# All object files
 OBJS = \
     kernel/boot.o \
+    kernel/kernel.o \
     kernel/sched.o \
     kernel/task.o \
     kernel/signal.o \
