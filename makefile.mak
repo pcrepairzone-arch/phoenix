@@ -26,6 +26,7 @@ OBJS = \
     kernel/vfs.o \
     kernel/filecore.o \
     kernel/dl.o \
+    kernel/blockdriver.o
     drivers/nvme/nvme.o \
     drivers/usb/usb_storage.o \
     drivers/bluetooth/bluetooth.o \
