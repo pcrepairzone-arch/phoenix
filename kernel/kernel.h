@@ -1,96 +1,95 @@
 /*
- * net.h – Network Headers for RISC OS Phoenix
- * Defines netdev_t, socket_t, eth_hdr_t, and constants
- * Author: R Andrews Grok 4 – 10 Dec 2025
+ * kernel.h – Core Kernel Headers for RISC OS Phoenix
+ * Central header file defining all major structures and prototypes
+ * Author: Grok 4 – 06 Feb 2026
  */
 
-#ifndef NET_H
-#define NET_H
+#ifndef KERNEL_H
+#define KERNEL_H
 
 #include <stdint.h>
+#include <stddef.h>
 
-#define ETH_HDR_SIZE    14
-#define ETH_MTU         1500
-#define ETH_P_ARP       0x0806
-#define ETH_P_IP        0x0800
-#define ETH_P_IPV6      0x86DD
+/* ==================== Basic Types & Constants ==================== */
 
-typedef struct eth_hdr {
-    uint8_t  dst[6];
-    uint8_t  src[6];
-    uint16_t type;
-} eth_hdr_t;
+#define TASK_NAME_LEN       32
+#define MAX_CPUS            8
+#define MAX_FD              1024
+#define PAGE_SIZE           4096
 
-typedef struct netdev {
-    char     name[16];
-    uint8_t  mac[6];
-    net_queue_t *rx_queue;
-    net_queue_t *tx_queue;
-    void     (*tx_func)(struct netdev *dev, void *pkt, size_t len);
-    // IP config, MTU, etc.
-} netdev_t;
+#define SIG_DFL             ((void(*)(int))0)
+#define SIG_IGN             ((void(*)(int))1)
+#define SIG_ERR             ((void(*)(int))-1)
 
-typedef struct net_queue {
-    void    *packets[1024];
-    size_t   sizes[1024];
-    int      head, tail;
-    spinlock_t lock;
-} net_queue_t;
+#define O_RDONLY            0x0000
+#define O_WRONLY            0x0001
+#define O_RDWR              0x0002
+#define O_NONBLOCK          0x0004
+#define O_CREAT             0x0008
 
-#define AF_INET         2
-#define AF_INET6        10
-#define SOCK_STREAM     1
-#define SOCK_DGRAM      2
+#define S_IFIFO             (1ULL << 12)   // Pipe
+#define S_IFREG             (1ULL << 13)   // Regular file
+#define S_IFDIR             (1ULL << 14)   // Directory
+#define S_IFBLK             (1ULL << 15)   // Block device
 
-typedef struct sockaddr {
-    uint16_t sa_family;
-    char     sa_data[14];
-} sockaddr_t;
+/* Mouse buttons (standard RISC OS) */
+#define MOUSE_SELECT        1   // Left button
+#define MOUSE_MENU          2   // Middle button (context menu)
+#define MOUSE_ADJUST        4   // Right button
 
-typedef struct sockaddr_in {
-    uint16_t sin_family;
-    uint16_t sin_port;
-    uint32_t sin_addr;
-    char     sin_zero[8];
-} sockaddr_in_t;
+/* ==================== Spinlock ==================== */
 
-typedef struct socket socket_t;
+typedef struct {
+    uint32_t value;
+} spinlock_t;
 
-void netdev_register(netdev_t *dev);
-void net_rx_packet(netdev_t *dev, void *data, size_t len);
-void net_tx_packet(netdev_t *dev, void *pkt, size_t len);
+#define SPINLOCK_INIT       {0}
 
-void net_queue_init(net_queue_t *q);
-void net_queue_enqueue(net_queue_t *q, void *pkt, size_t len);
-int net_queue_dequeue(net_queue_t *q, void **pkt, size_t *len);
+void spin_lock_irqsave(spinlock_t *lock, unsigned long *flags);
+void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags);
 
-int socket_create(int domain, int type, int protocol);
-socket_t *socket_get(int fd);
-int socket_bind(socket_t *sock, const sockaddr_t *addr, socklen_t addrlen);
-int socket_listen(socket_t *sock, int backlog);
-int socket_accept(socket_t *sock, sockaddr_t *addr, socklen_t *addrlen);
-int socket_connect(socket_t *sock, const sockaddr_t *addr, socklen_t addrlen);
-ssize_t socket_send(socket_t *sock, const void *buf, size_t len, int flags);
-ssize_t socket_recv(socket_t *sock, void *buf, size_t len, int flags);
+/* ==================== Task Structure ==================== */
 
-void arp_init(void);
-void arp_input(netdev_t *dev, void *data, size_t len);
-int arp_resolve(netdev_t *dev, uint32_t ip, uint8_t *mac);
+typedef enum {
+    TASK_RUNNING,
+    TASK_READY,
+    TASK_BLOCKED,
+    TASK_ZOMBIE
+} task_state_t;
 
-void ipv4_init(void);
-void ipv4_input(netdev_t *dev, void *data, size_t len);
-void ipv4_output(netdev_t *dev, uint32_t dst_ip, uint8_t proto, void *payload, size_t len);
+typedef struct task task_t;
 
-void ipv6_init(void);
-void ipv6_input(netdev_t *dev, void *data, size_t len);
-void ipv6_output(netdev_t *dev, const uint8_t *dst_ip, uint8_t next_hdr, void *payload, size_t len);
+struct task {
+    uint64_t        regs[31];           // x0-x30
+    uint64_t        sp_el0;             // User stack pointer
+    uint64_t        elr_el1;            // Exception Link Register
+    uint64_t        spsr_el1;           // Saved Program Status Register
+    uint64_t        stack_top;          // Kernel stack top
+    task_t         *next;
+    task_t         *prev;
+    char            name[TASK_NAME_LEN];
+    int             pid;
+    int             priority;
+    task_state_t    state;
+    uint64_t        cpu_affinity;       // Bitmask of allowed CPUs
+    task_t         *parent;
+    task_t        **children;
+    int             child_count;
+    spinlock_t      children_lock;
+    int             exit_status;
+    void           *pgtable_l0;         // Page table root (MMU)
+    struct file    *files[MAX_FD];      // Open file descriptors
+    struct inode   *cwd;                // Current working directory
+    struct signal_state signal_state;   // Signal handling state
+};
 
-void tcp_init(void);
-void tcp_input(netdev_t *dev, void *data, size_t len);
+/* ==================== File & VFS ==================== */
 
-void udp_init(void);
-void udp_input(netdev_t *dev, void *data, size_t len);
+typedef struct inode inode_t;
+typedef struct file file_t;
+typedef struct file_ops file_ops_t;
 
-uint16_t ip_checksum(void *data, size_t len);
-
-#endif /* NET_H */
+struct inode {
+    uint64_t i_mode;            // File type and permissions
+    uint64_t i_size;            // File size in bytes
+    uint64_t i_blocks;
