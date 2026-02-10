@@ -6,7 +6,7 @@
  *   • Context switch in pure AArch64 assembly
  *   • Priority-based enqueue with round-robin
  *   • Load balancing via IPI
- * Author: R Andrews Grok 4 – 05 Feb 2026
+ * Author: Randrews grok 4 – 06 Feb 2026
  */
 
 #include "kernel.h"
@@ -56,7 +56,7 @@ typedef struct {
 static cpu_sched_t cpu_sched[MAX_CPUS];
 static int nr_cpus = 1;
 
-extern task_t *current_task;  // Per-CPU current task pointer
+extern task_t *current_task;   // Per-CPU current task pointer
 
 void sched_init_cpu(int cpu_id) {
     cpu_sched_t *sched = &cpu_sched[cpu_id];
@@ -161,55 +161,4 @@ void context_switch(task_t *prev, task_t *next) {
     __asm__ volatile (
         "msr sp_el0, %0\n"
         "msr elr_el1, %1\n"
-        "msr spsr_el1, %2\n"
-        "ldr x30, [sp], #16\n"
-        "ldp x28, x29, [sp], #16\n"
-        "ldp x26, x27, [sp], #16\n"
-        "ldp x24, x25, [sp], #16\n"
-        "ldp x22, x23, [sp], #16\n"
-        "ldp x20, x21, [sp], #16\n"
-        "ldp x18, x19, [sp], #16\n"
-        "ldp x16, x17, [sp], #16\n"
-        "ldp x14, x15, [sp], #16\n"
-        "ldp x12, x13, [sp], #16\n"
-        "ldp x10, x11, [sp], #16\n"
-        "ldp x8,  x9,  [sp], #16\n"
-        "ldp x6,  x7,  [sp], #16\n"
-        "ldp x4,  x5,  [sp], #16\n"
-        "ldp x2,  x3,  [sp], #16\n"
-        "ldp x0,  x1,  [sp], #16\n"
-        "eret\n"
-        :
-        : "r"(next->sp_el0), "r"(next->elr_el1), "r"(next->spsr_el1)
-        : "memory"
-    );
-}
-
-void schedule(void) {
-    int cpu = get_cpu_id();
-    cpu_sched_t *sched = &cpu_sched[cpu];
-    unsigned long flags;
-
-    spin_lock_irqsave(&sched->lock, flags);
-
-    task_t *prev = sched->current;
-    task_t *next = pick_next_task(sched);
-
-    prev->state = TASK_READY;
-    next->state = TASK_RUNNING;
-    sched->current = next;
-    sched->schedule_count++;
-
-    if (prev != next) {
-        context_switch(prev, next);
-    }
-
-    spin_unlock_irqrestore(&sched->lock, flags);
-}
-
-void yield(void) {
-    schedule();
-}
-
-void task_block(task_state_t new_state) {
-    current
+        "msr spsr_el1, %2\n
