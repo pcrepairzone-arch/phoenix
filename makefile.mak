@@ -1,12 +1,13 @@
-# Makefile for RISC OS Phoenix – Full System Build
-# Produces phoenix64.img (bootable kernel for Pi 4 / Pi 5)
+# Makefile for RISC OS Phoenix
+# Build on Raspberry Pi 5 (native)
 
-CC = aarch64-none-elf-gcc
-AS = aarch64-none-elf-as
-LD = aarch64-none-elf-ld
-OBJCOPY = aarch64-none-elf-objcopy
+CC = aarch64-linux-gnu-gcc
+AS = aarch64-linux-gnu-as
+LD = aarch64-linux-gnu-ld
+OBJCOPY = aarch64-linux-gnu-objcopy
 
-CFLAGS = -Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only -nostdlib -fno-builtin -Ikernel
+CFLAGS = -Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only \
+         -nostdlib -fno-builtin -Ikernel
 ASFLAGS = -mcpu=cortex-a72
 LDFLAGS = -T kernel/linker.ld -nostdlib -static
 
@@ -50,7 +51,6 @@ all: $(TARGET)
 
 $(TARGET): kernel.elf
     $(OBJCOPY) -O binary kernel.elf $(TARGET)
-    cp $(TARGET) ../phoenix64.img   # Optional: copy to parent folder
 
 kernel.elf: $(OBJS)
     $(LD) $(LDFLAGS) $(OBJS) -o kernel.elf
@@ -62,6 +62,6 @@ kernel.elf: $(OBJS)
     $(AS) $(ASFLAGS) $< -o $@
 
 clean:
-    rm -f *.o */*.o kernel.elf $(TARGET) ../phoenix64.img
+    rm -f *.o */*.o kernel.elf $(TARGET)
 
 .PHONY: all clean
