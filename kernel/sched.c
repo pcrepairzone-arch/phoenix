@@ -1,47 +1,11 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Features:
- *   • Per-core runqueues (SMP-ready)
- *   • Preemptive scheduling via timer tick
- *   • Context switch in pure AArch64 assembly
- *   • Priority-based enqueue with round-robin
- *   • Load balancing via IPI
- * Author: Randrews grok 4 – 06 Feb 2026
+ * Author: Grok 4 – 06 Feb 2026
  */
 
 #include "kernel.h"
 #include "spinlock.h"
-#include <stdint.h>
 #include <string.h>
-
-#define MAX_CPUS            8
-#define TASK_NAME_LEN       32
-#define TASK_MIN_PRIORITY   0
-#define TASK_MAX_PRIORITY   255
-
-typedef enum {
-    TASK_RUNNING,
-    TASK_READY,
-    TASK_BLOCKED,
-    TASK_ZOMBIE
-} task_state_t;
-
-typedef struct task task_t;
-
-struct task {
-    uint64_t    regs[31];
-    uint64_t    sp_el0;
-    uint64_t    elr_el1;
-    uint64_t    spsr_el1;
-    uint64_t    stack_top;
-    task_t     *next;
-    task_t     *prev;
-    char        name[TASK_NAME_LEN];
-    int         pid;
-    int         priority;
-    task_state_t state;
-    uint64_t    cpu_affinity;
-};
 
 typedef struct {
     task_t     *current;
@@ -56,8 +20,9 @@ typedef struct {
 static cpu_sched_t cpu_sched[MAX_CPUS];
 static int nr_cpus = 1;
 
-extern task_t *current_task;   // Per-CPU current task pointer
+extern task_t *current_task;
 
+/* Initialize scheduler for one CPU */
 void sched_init_cpu(int cpu_id) {
     cpu_sched_t *sched = &cpu_sched[cpu_id];
     sched->cpu_id = cpu_id;
@@ -73,17 +38,18 @@ void sched_init_cpu(int cpu_id) {
     idle->state = TASK_RUNNING;
     idle->priority = TASK_MAX_PRIORITY;
     sched->idle_task = sched->current = idle;
-    current_task = idle;
 }
 
+/* Initialize scheduler for all CPUs */
 void sched_init(void) {
-    nr_cpus = detect_nr_cpus();  // From device tree or CPU ID
+    nr_cpus = detect_nr_cpus();
     for (int i = 0; i < nr_cpus; i++) {
         sched_init_cpu(i);
     }
     debug_print("Scheduler initialized for %d CPUs\n", nr_cpus);
 }
 
+/* Enqueue task into runqueue */
 static inline void enqueue_task(cpu_sched_t *sched, task_t *task) {
     task->state = TASK_READY;
     task->next = NULL;
@@ -114,6 +80,7 @@ static inline void enqueue_task(cpu_sched_t *sched, task_t *task) {
     }
 }
 
+/* Dequeue task from runqueue */
 static inline void dequeue_task(cpu_sched_t *sched, task_t *task) {
     if (task->prev) task->prev->next = task->next;
     else sched->runqueue_head = task->next;
@@ -121,18 +88,21 @@ static inline void dequeue_task(cpu_sched_t *sched, task_t *task) {
     else sched->runqueue_tail = task->prev;
 }
 
+/* Pick next task to run */
 static inline task_t *pick_next_task(cpu_sched_t *sched) {
     if (!sched->runqueue_head) {
         return sched->idle_task;
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);  // Round-robin requeue
+    enqueue_task(sched, next);  // Round-robin
     return next;
 }
 
+/* Context switch */
 void context_switch(task_t *prev, task_t *next) {
     current_task = next;
+
     __asm__ volatile (
         "stp x0, x1, [sp, #-16]!\n"
         "stp x2, x3, [sp, #-16]!\n"
@@ -161,4 +131,117 @@ void context_switch(task_t *prev, task_t *next) {
     __asm__ volatile (
         "msr sp_el0, %0\n"
         "msr elr_el1, %1\n"
-        "msr spsr_el1, %2\n
+        "msr spsr_el1, %2\n"
+        "ldr x30, [sp], #16\n"
+        "ldp x28, x29, [sp], #16\n"
+        "ldp x26, x27, [sp], #16\n"
+        "ldp x24, x25, [sp], #16\n"
+        "ldp x22, x23, [sp], #16\n"
+        "ldp x20, x21, [sp], #16\n"
+        "ldp x18, x19, [sp], #16\n"
+        "ldp x16, x17, [sp], #16\n"
+        "ldp x14, x15, [sp], #16\n"
+        "ldp x12, x13, [sp], #16\n"
+        "ldp x10, x11, [sp], #16\n"
+        "ldp x8,  x9,  [sp], #16\n"
+        "ldp x6,  x7,  [sp], #16\n"
+        "ldp x4,  x5,  [sp], #16\n"
+        "ldp x2,  x3,  [sp], #16\n"
+        "ldp x0,  x1,  [sp], #16\n"
+        "eret\n"
+        :
+        : "r"(next->sp_el0), "r"(next->elr_el1), "r"(next->spsr_el1)
+        : "memory"
+    );
+}
+
+/* Main scheduler */
+void schedule(void) {
+    int cpu = get_cpu_id();
+    cpu_sched_t *sched = &cpu_sched[cpu];
+    unsigned long flags;
+
+    spin_lock_irqsave(&sched->lock, &flags);
+
+    task_t *prev = sched->current;
+    task_t *next = pick_next_task(sched);
+
+    prev->state = TASK_READY;
+    next->state = TASK_RUNNING;
+    sched->current = next;
+    sched->schedule_count++;
+
+    if (prev != next) {
+        context_switch(prev, next);
+    }
+
+    spin_unlock_irqrestore(&sched->lock, flags);
+}
+
+void yield(void) {
+    schedule();
+}
+
+void task_block(task_state_t new_state) {
+    current_task->state = new_state;
+    schedule();
+}
+
+void task_wakeup(task_t *task) {
+    unsigned long flags;
+    int cpu = __builtin_ctzll(task->cpu_affinity);
+    cpu_sched_t *sched = &cpu_sched[cpu];
+
+    spin_lock_irqsave(&sched->lock, &flags);
+    if (task->state == TASK_BLOCKED) {
+        enqueue_task(sched, task);
+    }
+    spin_unlock_irqrestore(&sched->lock, flags);
+
+    if (sched->current == sched->idle_task) {
+        send_ipi(1ULL << cpu, IPI_RESCHEDULE, 0);
+    }
+}
+
+/* Load balancing (called from timer tick) */
+static void load_balance(void) {
+    int cpu = get_cpu_id();
+    cpu_sched_t *sched = &cpu_sched[cpu];
+
+    if (sched->current != sched->idle_task) return;
+
+    int busiest = 0;
+    uint64_t max_load = 0;
+    for (int i = 0; i < nr_cpus; i++) {
+        if (i == cpu) continue;
+        uint64_t load = cpu_sched[i].schedule_count;
+        if (load > max_load) {
+            max_load = load;
+            busiest = i;
+        }
+    }
+
+    if (max_load == 0) return;
+
+    cpu_sched_t *bsched = &cpu_sched[busiest];
+    unsigned long flags;
+    spin_lock_irqsave(&bsched->lock, &flags);
+
+    if (bsched->runqueue_head) {
+        task_t *stolen = bsched->runqueue_head;
+        dequeue_task(bsched, stolen);
+        spin_unlock_irqrestore(&bsched->lock, flags);
+
+        spin_lock_irqsave(&sched->lock, &flags);
+        enqueue_task(sched, stolen);
+        spin_unlock_irqrestore(&sched->lock, flags);
+    } else {
+        spin_unlock_irqrestore(&bsched->lock, flags);
+    }
+}
+
+/* Called from timer interrupt */
+void timer_tick(void) {
+    schedule();
+    load_balance();
+}
