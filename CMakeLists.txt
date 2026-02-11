@@ -4,15 +4,16 @@ project(phoenix C ASM)
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
+# === Toolchain ===
 set(CMAKE_C_COMPILER aarch64-none-elf-gcc)
 set(CMAKE_ASM_COMPILER aarch64-none-elf-as)
 set(CMAKE_LINKER aarch64-none-elf-ld)
 set(CMAKE_OBJCOPY aarch64-none-elf-objcopy)
 
-set(CMAKE_C_FLAGS "-Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only -nostdlib -fno-builtin -Ikernel -I.")
+set(CMAKE_C_FLAGS "-Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only -nostdlib -fno-builtin")
 set(CMAKE_ASM_FLAGS "-mcpu=cortex-a72")
 
-# All source files
+# === All source files (exact paths) ===
 set(SOURCES
     kernel/boot.c
     kernel/kernel.c
@@ -59,8 +60,16 @@ set_target_properties(phoenix PROPERTIES
     LINK_FLAGS "-T ${CMAKE_SOURCE_DIR}/kernel/linker.ld -nostdlib -static"
 )
 
-# Generate final .img
+# Generate final bootable image
 add_custom_command(TARGET phoenix POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary phoenix phoenix64.img
     COMMENT "Creating bootable image: phoenix64.img"
+)
+
+# Include directories
+target_include_directories(phoenix PRIVATE
+    kernel
+    drivers
+    net
+    wimp
 )
