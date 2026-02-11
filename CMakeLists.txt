@@ -29,7 +29,7 @@ set(SOURCES
     kernel/vfs.c
     kernel/filecore.c
     kernel/dl.c
-    kernel/blockdriver.c          # ← Added here
+    kernel/blockdriver.c          # ← Added
 
     drivers/nvme/nvme.c
     drivers/usb/usb_storage.c
