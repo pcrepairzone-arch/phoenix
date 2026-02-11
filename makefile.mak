@@ -1,10 +1,10 @@
 # Makefile for RISC OS Phoenix
-# Build on Raspberry Pi 5 (native) or cross-compile
+# Simple and reliable build for Windows + MSYS2
 
-CC = aarch64-linux-gnu-gcc
-AS = aarch64-linux-gnu-as
-LD = aarch64-linux-gnu-ld
-OBJCOPY = aarch64-linux-gnu-objcopy
+CC = aarch64-none-elf-gcc
+AS = aarch64-none-elf-as
+LD = aarch64-none-elf-ld
+OBJCOPY = aarch64-none-elf-objcopy
 
 CFLAGS = -Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only \
          -nostdlib -fno-builtin -Ikernel -I. -Idrivers -Inet -Iwimp
@@ -26,6 +26,8 @@ OBJS = \
     kernel/vfs.o \
     kernel/filecore.o \
     kernel/dl.o \
+    kernel/blockdriver.o \
+    kernel/spinlock.o \
     drivers/nvme/nvme.o \
     drivers/usb/usb_storage.o \
     drivers/bluetooth/bluetooth.o \

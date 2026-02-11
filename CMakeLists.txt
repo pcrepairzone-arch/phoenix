@@ -54,6 +54,7 @@ set(SOURCES
 
     apps/paint.c
     apps/netsurf.c
+		kernel/blockdriver.h
 )
 
 add_executable(phoenix ${SOURCES})
