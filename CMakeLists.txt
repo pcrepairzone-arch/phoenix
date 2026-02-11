@@ -13,7 +13,7 @@ set(CMAKE_OBJCOPY "C:/msys64/mingw64/bin/aarch64-none-elf-objcopy.exe")
 set(CMAKE_C_FLAGS "-Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only -nostdlib -fno-builtin")
 set(CMAKE_ASM_FLAGS "-mcpu=cortex-a72")
 
-# === All source files (including blockdriver) ===
+# === All source files (including spinlock) ===
 set(SOURCES
     kernel/boot.c
     kernel/kernel.c
@@ -29,8 +29,10 @@ set(SOURCES
     kernel/vfs.c
     kernel/filecore.c
     kernel/dl.c
-    kernel/blockdriver.c          # ← Added
-
+    kernel/blockdriver.c
+    kernel/spinlock.c          # ← Added here
+	kernel/blockdriver.h
+	
     drivers/nvme/nvme.c
     drivers/usb/usb_storage.c
     drivers/bluetooth/bluetooth.c
