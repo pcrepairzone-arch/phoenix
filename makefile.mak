@@ -1,5 +1,5 @@
 # Makefile for RISC OS Phoenix
-# Build on Raspberry Pi 5 or any Linux machine with AArch64 toolchain
+# Build on Raspberry Pi 5 (native) or cross-compile
 
 CC = aarch64-linux-gnu-gcc
 AS = aarch64-linux-gnu-as
@@ -7,7 +7,7 @@ LD = aarch64-linux-gnu-ld
 OBJCOPY = aarch64-linux-gnu-objcopy
 
 CFLAGS = -Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only \
-         -nostdlib -fno-builtin -Ikernel -I.
+         -nostdlib -fno-builtin -Ikernel -I. -Idrivers -Inet -Iwimp
 ASFLAGS = -mcpu=cortex-a72
 LDFLAGS = -T kernel/linker.ld -nostdlib -static
 
@@ -26,7 +26,6 @@ OBJS = \
     kernel/vfs.o \
     kernel/filecore.o \
     kernel/dl.o \
-    kernel/blockdriver.o
     drivers/nvme/nvme.o \
     drivers/usb/usb_storage.o \
     drivers/bluetooth/bluetooth.o \
@@ -63,6 +62,6 @@ kernel.elf: $(OBJS)
     $(AS) $(ASFLAGS) $< -o $@
 
 clean:
-    rm -f *.o */*.o kernel.elf $(TARGET)
+    rm -f *.o */*.o */*/*.o kernel.elf $(TARGET)
 
 .PHONY: all clean
