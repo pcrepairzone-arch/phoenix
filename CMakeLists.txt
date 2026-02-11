@@ -4,7 +4,7 @@ project(phoenix C ASM)
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
-# === Use MSYS2 toolchain ===
+# === Toolchain (MSYS2 path) ===
 set(CMAKE_C_COMPILER "C:/msys64/mingw64/bin/aarch64-none-elf-gcc.exe")
 set(CMAKE_ASM_COMPILER "C:/msys64/mingw64/bin/aarch64-none-elf-as.exe")
 set(CMAKE_LINKER "C:/msys64/mingw64/bin/aarch64-none-elf-ld.exe")
@@ -13,6 +13,7 @@ set(CMAKE_OBJCOPY "C:/msys64/mingw64/bin/aarch64-none-elf-objcopy.exe")
 set(CMAKE_C_FLAGS "-Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only -nostdlib -fno-builtin")
 set(CMAKE_ASM_FLAGS "-mcpu=cortex-a72")
 
+# === All source files (including blockdriver) ===
 set(SOURCES
     kernel/boot.c
     kernel/kernel.c
@@ -28,6 +29,7 @@ set(SOURCES
     kernel/vfs.c
     kernel/filecore.c
     kernel/dl.c
+    kernel/blockdriver.c          # ← Added here
 
     drivers/nvme/nvme.c
     drivers/usb/usb_storage.c
@@ -54,15 +56,18 @@ set(SOURCES
 
 add_executable(phoenix ${SOURCES})
 
+# Linker script
 set_target_properties(phoenix PROPERTIES
     LINK_FLAGS "-T ${CMAKE_SOURCE_DIR}/kernel/linker.ld -nostdlib -static"
 )
 
+# Generate final bootable image
 add_custom_command(TARGET phoenix POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary phoenix phoenix64.img
     COMMENT "Creating bootable image: phoenix64.img"
 )
 
+# Include directories
 target_include_directories(phoenix PRIVATE
     kernel
     drivers
