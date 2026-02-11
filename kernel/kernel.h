@@ -9,6 +9,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/* ==================== Basic Types ==================== */
+
+typedef int64_t ssize_t;
+typedef int64_t off_t;
+typedef int32_t pid_t;
+
 /* ==================== Constants ==================== */
 
 #define TASK_NAME_LEN       32
@@ -24,23 +30,6 @@
 #define SIG_IGN             ((void(*)(int))1)
 #define SIG_ERR             ((void(*)(int))-1)
 
-/* ==================== Basic Types ==================== */
-
-typedef int64_t ssize_t;
-typedef int64_t off_t;
-typedef int32_t pid_t;
-
-/* ==================== Forward Declarations ==================== */
-
-typedef struct task task_t;
-typedef struct file file_t;
-typedef struct inode inode_t;
-typedef struct blockdev blockdev_t;
-typedef struct wimp_event wimp_event_t;
-typedef struct wimp_window_def wimp_window_def;
-typedef struct bbox bbox_t;
-typedef struct timer timer_t;
-
 /* ==================== Spinlock ==================== */
 
 typedef struct {
@@ -51,13 +40,13 @@ typedef struct {
 
 /* ==================== Signal State ==================== */
 
-struct signal_state {
+typedef struct signal_state {
     void (*handlers[32])(int);
     uint64_t pending;
     uint64_t blocked;
     uint64_t old_mask;
     uint64_t sigreturn_sp;
-};
+} signal_state_t;
 
 /* ==================== Task Structure ==================== */
 
@@ -67,6 +56,8 @@ typedef enum {
     TASK_BLOCKED,
     TASK_ZOMBIE
 } task_state_t;
+
+typedef struct task task_t;
 
 struct task {
     uint64_t        regs[31];
@@ -89,7 +80,7 @@ struct task {
     void           *pgtable_l0;
     file_t         *files[MAX_FD];
     inode_t        *cwd;
-    struct signal_state signal_state;
+    signal_state_t  signal_state;
 };
 
 /* ==================== Function Prototypes ==================== */
