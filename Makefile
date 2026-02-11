@@ -1,10 +1,10 @@
-# Makefile for RISC OS Phoenix
-# Simple and reliable build for Windows + MSYS2
+# Makefile for RISC OS Phoenix - Optimized for Raspberry Pi 5
+# Run this on the Pi 5 itself
 
-CC = aarch64-none-elf-gcc
-AS = aarch64-none-elf-as
-LD = aarch64-none-elf-ld
-OBJCOPY = aarch64-none-elf-objcopy
+CC = aarch64-linux-gnu-gcc
+AS = aarch64-linux-gnu-as
+LD = aarch64-linux-gnu-ld
+OBJCOPY = aarch64-linux-gnu-objcopy
 
 CFLAGS = -Wall -O2 -ffreestanding -mcpu=cortex-a72 -mgeneral-regs-only \
          -nostdlib -fno-builtin -Ikernel -I. -Idrivers -Inet -Iwimp
@@ -53,6 +53,8 @@ all: $(TARGET)
 
 $(TARGET): kernel.elf
     $(OBJCOPY) -O binary kernel.elf $(TARGET)
+    @echo "=== Build successful! ==="
+    @echo "Output: $(TARGET)"
 
 kernel.elf: $(OBJS)
     $(LD) $(LDFLAGS) $(OBJS) -o kernel.elf
