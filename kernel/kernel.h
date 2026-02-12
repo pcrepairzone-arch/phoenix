@@ -1,9 +1,3 @@
-/*
- * kernel.h – Minimal Self-Contained Kernel Headers
- * All types defined here to avoid incomplete type errors
- * Author: Grok 4 – 06 Feb 2026
- */
-
 #ifndef KERNEL_H
 #define KERNEL_H
 
@@ -22,18 +16,31 @@ typedef int32_t pid_t;
 #define PAGE_SIZE           4096
 #define PAGE_MASK           (~(PAGE_SIZE - 1))
 
-#define MOUSE_SELECT        1
-#define MOUSE_MENU          2
-#define MOUSE_ADJUST        4
-
-#define SIG_DFL             ((void(*)(int))0)
-#define SIG_IGN             ((void(*)(int))1)
-#define SIG_ERR             ((void(*)(int))-1)
-
 #define TASK_MIN_PRIORITY   0
 #define TASK_MAX_PRIORITY   255
 
 #define IPI_RESCHEDULE      2
+
+/* ELF constants */
+#define EI_CLASS            4
+#define EI_DATA             5
+#define ELFCLASS64          2
+#define ELFDATA2LSB         1
+#define ET_EXEC             2
+#define EM_AARCH64          183
+#define SELFMAG             4
+#define ELFMAG              "\177ELF"
+
+/* Protection flags */
+#define PF_R                4
+#define PF_W                2
+#define PF_X                1
+
+#define PROT_READ           1
+#define PROT_WRITE          2
+#define PROT_EXEC           4
+
+#define SEEK_SET            0
 
 /* Spinlock */
 typedef struct {
@@ -80,18 +87,16 @@ struct task {
     spinlock_t      children_lock;
     int             exit_status;
     void           *pgtable_l0;
-    void           *files[MAX_FD];      // Simplified
+    void           *files[MAX_FD];
     void           *cwd;
     signal_state_t  signal_state;
 };
 
-/* Function Prototypes (Minimal) */
+/* Function Prototypes */
 void kernel_main(uint64_t dtb_ptr);
-void halt_system(void);
 void debug_print(const char *fmt, ...);
 
 void sched_init(void);
-void sched_init_cpu(int cpu_id);
 void schedule(void);
 void yield(void);
 void task_block(task_state_t state);
@@ -108,31 +113,8 @@ void mmu_init_task(task_t *task);
 int mmu_map(task_t *task, uint64_t virt, uint64_t size, int prot, int guard);
 int mmu_duplicate_pagetable(task_t *parent, task_t *child);
 void mmu_free_usermemory(task_t *task);
-void data_abort_handler(uint64_t esr, uint64_t far);
 
-void (*signal(int sig, void (*handler)(int)))(int);
-int kill(pid_t pid, int sig);
-void check_signals(void);
-void sig_init(task_t *task);
-
-uint64_t get_time_ns(void);
 void timer_init(void);
-void timer_schedule(void *timer, uint64_t ms);
-
-void irq_init(void);
-void irq_set_handler(int vector, void (*handler)(int, void*), void *private);
-void irq_unmask(int vector);
-void irq_eoi(int vector);
-void send_ipi(uint64_t target_cpus, int ipi_id, uint64_t arg);
-
-void pci_scan_bus(void);
-
-void *blockdev_register(const char *name, uint64_t size, uint32_t block_size);
-void *blockdev_get(const char *name, int unit);
-
-int Wimp_Poll(int mask, void *event);
-void *wimp_create_window(void *def);
-void wimp_redraw_request(void *win, void *clip);
 
 extern task_t *current_task;
 extern int nr_cpus;
