@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types
+ * Clean version – no duplicate types, no conflicting spinlock
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -19,8 +19,8 @@ typedef struct {
 } cpu_sched_t;
 
 static cpu_sched_t cpu_sched[MAX_CPUS];
-static int nr_cpus = 1;
 
+extern int nr_cpus;           // Use the one from kernel.h
 extern task_t *current_task;
 
 /* Initialize scheduler for one CPU */
@@ -96,7 +96,7 @@ static inline task_t *pick_next_task(cpu_sched_t *sched) {
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);  // Round-robin
+    enqueue_task(sched, next);
     return next;
 }
 
