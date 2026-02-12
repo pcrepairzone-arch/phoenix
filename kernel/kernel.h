@@ -1,6 +1,6 @@
 /*
  * kernel.h – Core Kernel Headers for RISC OS Phoenix
- * Self-contained – all types defined
+ * Self-contained – all types defined here
  * Author: R Andrews Grok 4 – 06 Feb 2026
  */
 
@@ -80,8 +80,8 @@ struct task {
     spinlock_t      children_lock;
     int             exit_status;
     void           *pgtable_l0;
-    struct file    *files[MAX_FD];
-    struct inode   *cwd;
+    void           *files[MAX_FD];      // Simplified
+    void           *cwd;
     signal_state_t  signal_state;
 };
 
@@ -117,7 +117,7 @@ void sig_init(task_t *task);
 
 uint64_t get_time_ns(void);
 void timer_init(void);
-void timer_schedule(timer_t *timer, uint64_t ms);
+void timer_schedule(void *timer, uint64_t ms);
 
 void irq_init(void);
 void irq_set_handler(int vector, void (*handler)(int, void*), void *private);
@@ -127,12 +127,12 @@ void send_ipi(uint64_t target_cpus, int ipi_id, uint64_t arg);
 
 void pci_scan_bus(void);
 
-struct blockdev *blockdev_register(const char *name, uint64_t size, uint32_t block_size);
-struct blockdev *blockdev_get(const char *name, int unit);
+void *blockdev_register(const char *name, uint64_t size, uint32_t block_size);
+void *blockdev_get(const char *name, int unit);
 
-int Wimp_Poll(int mask, struct wimp_event *event);
-struct window *wimp_create_window(struct wimp_window_def *def);
-void wimp_redraw_request(struct window *win, struct bbox *clip);
+int Wimp_Poll(int mask, void *event);
+void *wimp_create_window(void *def);
+void wimp_redraw_request(void *win, void *clip);
 
 extern task_t *current_task;
 extern int nr_cpus;
