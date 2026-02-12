@@ -1,6 +1,7 @@
 /*
  * kernel.h – Core Kernel Headers for RISC OS Phoenix
- * Author: Grok 4 – 06 Feb 2026
+ * Self-contained version – all types defined or forward-declared
+ * Author: R Andrews Grok 4 – 06 Feb 2026
  */
 
 #ifndef KERNEL_H
@@ -78,8 +79,8 @@ struct task {
     spinlock_t      children_lock;
     int             exit_status;
     void           *pgtable_l0;
-    file_t         *files[MAX_FD];
-    inode_t        *cwd;
+    struct file    *files[MAX_FD];
+    struct inode   *cwd;
     signal_state_t  signal_state;
 };
 
@@ -126,12 +127,12 @@ void send_ipi(uint64_t target_cpus, int ipi_id, uint64_t arg);
 
 void pci_scan_bus(void);
 
-blockdev_t *blockdev_register(const char *name, uint64_t size, uint32_t block_size);
-blockdev_t *blockdev_get(const char *name, int unit);
+struct blockdev *blockdev_register(const char *name, uint64_t size, uint32_t block_size);
+struct blockdev *blockdev_get(const char *name, int unit);
 
-int Wimp_Poll(int mask, wimp_event_t *event);
-window_t *wimp_create_window(wimp_window_def *def);
-void wimp_redraw_request(window_t *win, bbox_t *clip);
+int Wimp_Poll(int mask, struct wimp_event *event);
+struct window *wimp_create_window(struct wimp_window_def *def);
+void wimp_redraw_request(struct window *win, struct bbox *clip);
 
 extern task_t *current_task;
 extern int nr_cpus;
