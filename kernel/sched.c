@@ -96,11 +96,11 @@ static inline task_t *pick_next_task(cpu_sched_t *sched) {
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);  // Round-robin
+    enqueue_task(sched, next);
     return next;
 }
 
-/* Context switch - FIXED assembly */
+/* Context switch - Fixed assembly */
 void context_switch(task_t *prev, task_t *next) {
     current_task = next;
 
