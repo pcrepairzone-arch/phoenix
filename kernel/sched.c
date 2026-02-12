@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Author: Grok 4 – 06 Feb 2026
+ * Author: Randrews Grok 4 – 06 Feb 2026
  */
 
 #include "kernel.h"
