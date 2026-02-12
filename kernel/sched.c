@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types, matches kernel.h
+ * Clean version – no duplicate types, no conflicting spinlock
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -50,7 +50,7 @@ void sched_init(void) {
     debug_print("Scheduler initialized for %d CPUs\n", nr_cpus);
 }
 
-/* Enqueue task */
+/* Enqueue task into runqueue */
 static inline void enqueue_task(cpu_sched_t *sched, task_t *task) {
     task->state = TASK_READY;
     task->next = NULL;
@@ -81,7 +81,7 @@ static inline void enqueue_task(cpu_sched_t *sched, task_t *task) {
     }
 }
 
-/* Dequeue task */
+/* Dequeue task from runqueue */
 static inline void dequeue_task(cpu_sched_t *sched, task_t *task) {
     if (task->prev) task->prev->next = task->next;
     else sched->runqueue_head = task->next;
@@ -89,14 +89,14 @@ static inline void dequeue_task(cpu_sched_t *sched, task_t *task) {
     else sched->runqueue_tail = task->prev;
 }
 
-/* Pick next task */
+/* Pick next task to run */
 static inline task_t *pick_next_task(cpu_sched_t *sched) {
     if (!sched->runqueue_head) {
         return sched->idle_task;
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);
+    enqueue_task(sched, next);  // Round-robin
     return next;
 }
 
@@ -241,7 +241,7 @@ static void load_balance(void) {
     }
 }
 
-/* Timer tick */
+/* Called from timer interrupt */
 void timer_tick(void) {
     schedule();
     load_balance();
