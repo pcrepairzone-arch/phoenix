@@ -1,7 +1,7 @@
 /*
  * kernel.h – Core Kernel Headers for RISC OS Phoenix
  * Self-contained version – all types defined or forward-declared
- * Author: R Andrews Grok 4 – 06 Feb 2026
+ * Author: R andrews Grok 4 – 06 Feb 2026
  */
 
 #ifndef KERNEL_H
@@ -30,6 +30,9 @@ typedef int32_t pid_t;
 #define SIG_DFL             ((void(*)(int))0)
 #define SIG_IGN             ((void(*)(int))1)
 #define SIG_ERR             ((void(*)(int))-1)
+
+#define TASK_MIN_PRIORITY   0
+#define TASK_MAX_PRIORITY   255
 
 /* ==================== Spinlock ==================== */
 

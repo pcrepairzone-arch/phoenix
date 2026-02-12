@@ -1,29 +1,33 @@
 /*
- * vfs.h – VFS Headers
+ * wimp.h – Wimp Headers
  */
 
-#ifndef VFS_H
-#define VFS_H
+#ifndef WIMP_H
+#define WIMP_H
 
-#include <stdint.h>
+typedef struct window window_t;
+typedef struct wimp_window_def wimp_window_def;
+typedef struct bbox bbox_t;
+typedef struct wimp_event wimp_event_t;
 
-typedef struct file file_t;
-typedef struct inode inode_t;
-
-struct inode {
-    uint64_t i_mode;
-    uint64_t i_size;
-    uint64_t i_blocks;
-    uint16_t file_type;
-    void *private;
+struct wimp_window_def {
+    int x0, y0, x1, y1;
+    char *title;
+    int icon_count;
 };
 
-struct file {
-    inode_t     *f_inode;
-    uint64_t    f_pos;
-    int         f_flags;
-    void       *f_ops;   /* Simplified for now */
-    void       *private;
+struct bbox {
+    int x0, y0, x1, y1;
 };
 
-#endif /* VFS_H */
+struct wimp_event {
+    int type;
+    union {
+        struct {
+            window_t *window;
+            bbox_t clip;
+        } redraw;
+    } u;
+};
+
+#endif /* WIMP_H */

@@ -1,8 +1,6 @@
 /*
  * task.c – Task management for RISC OS Phoenix
- * Includes task_create, fork, execve, wait
- * Full ELF64 loader in execve: Ehdr, Phdr, Shdr, dynamic linking (DT_NEEDED, relocs, symbols)
- * Author: R Andrews Grok 4 – 26 Nov 2025
+ * Author:  anrews Grok 4 – 06 Feb 2026
  */
 
 #include "kernel.h"
@@ -38,16 +36,16 @@ task_t *task_create(const char *name, void (*entry)(void), int priority, uint64_
     task->sp_el0 = (uint64_t)(user_stack + USER_STACK_SIZE);
 
     memset(task->regs, 0, sizeof(task->regs));
-    task->regs[0] = 0;  // x0 = 0
+    task->regs[0] = 0;
     task->elr_el1 = (uint64_t)entry;
-    task->spsr_el1 = 0;  // EL0, interrupts enabled
+    task->spsr_el1 = 0;
 
     mmu_init_task(task);
 
-    int cpu = __builtin_ctzll(task->cpu_affinity);  // First affinity CPU
+    int cpu = __builtin_ctzll(task->cpu_affinity);
     cpu_sched_t *sched = &cpu_sched[cpu];
     unsigned long flags;
-    spin_lock_irqsave(&sched->lock, flags);
+    spin_lock_irqsave(&sched->lock, &flags);
     enqueue_task(sched, task);
     spin_unlock_irqrestore(&sched->lock, flags);
 
@@ -73,7 +71,7 @@ int fork(void)
 
     if (mmu_duplicate_pagetable(parent, child) != 0) { kfree(child); return -1; }
 
-    child->regs[0] = 0;  // Child returns 0
+    child->regs[0] = 0;
 
     uint8_t *new_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!new_stack) { mmu_free_pagetable(child); kfree(child); return -1; }
@@ -83,21 +81,14 @@ int fork(void)
     uint64_t offset = parent->sp_el0 - (parent->stack_top - KERNEL_STACK_SIZE);
     child->sp_el0 = child->stack_top - offset;
 
-    // Add to parent's children
-    unsigned long flags;
-    spin_lock_irqsave(&parent->children_lock, flags);
-    parent->children = krealloc(parent->children, (parent->child_count + 1) * sizeof(task_t*));
-    if (!parent->children) { spin_unlock_irqrestore(&parent->children_lock, flags); return -1; }
-    parent->children[parent->child_count++] = child;
-    spin_unlock_irqrestore(&parent->children_lock, flags);
-
     int cpu = get_cpu_id();
     cpu_sched_t *sched = &cpu_sched[cpu];
-    spin_lock_irqsave(&sched->lock, flags);
+    unsigned long flags;
+    spin_lock_irqsave(&sched->lock, &flags);
     enqueue_task(sched, child);
     spin_unlock_irqrestore(&sched->lock, flags);
 
-    return child_pid;  // Parent returns child PID
+    return child_pid;
 }
 
 int execve(const char *pathname, char *const argv[], char *const envp[])
@@ -110,25 +101,107 @@ int execve(const char *pathname, char *const argv[], char *const envp[])
     ssize_t read_size = vfs_read(file, &ehdr, sizeof(ehdr));
     if (read_size != sizeof(ehdr)) goto fail;
 
-    // Validate ELF64
     if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0 ||
         ehdr.e_ident[EI_CLASS] != ELFCLASS64 ||
         ehdr.e_ident[EI_DATA] != ELFDATA2LSB ||
         ehdr.e_machine != EM_AARCH64 ||
         ehdr.e_type != ET_EXEC) {
-        vfs_close(file);
-        return -1;
+        goto fail;
     }
 
-    // Free existing user memory
     mmu_free_usermemory(task);
 
     uint64_t entry = ehdr.e_entry;
     uint64_t phoff = ehdr.e_phoff;
-    uint64_t shoff = ehdr.e_shoff;
     int phnum = ehdr.e_phnum;
-    int shnum = ehdr.e_shnum;
-    int shstrndx = ehdr.e_shstrndx;
 
-    // Load program headers
-    Elf64_Phdr *phdrs = kmalloc(phnum
+    for (int i = 0; i < phnum; i++) {
+        Elf64_Phdr phdr;
+        vfs_seek(file, phoff + i * ehdr.e_phentsize, SEEK_SET);
+        read_size = vfs_read(file, &phdr, sizeof(phdr));
+        if (read_size != sizeof(phdr)) goto fail;
+
+        if (phdr.p_type == PT_LOAD) {
+            size_t memsz = (phdr.p_memsz + PAGE_SIZE - 1) & PAGE_MASK;
+            void *page = kmalloc(memsz);
+            if (!page) goto fail;
+
+            vfs_seek(file, phdr.p_offset, SEEK_SET);
+            read_size = vfs_read(file, page, phdr.p_filesz);
+            if (read_size != phdr.p_filesz) {
+                kfree(page);
+                goto fail;
+            }
+
+            memset((char*)page + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+
+            int prot = 0;
+            if (phdr.p_flags & PF_R) prot |= PROT_READ;
+            if (phdr.p_flags & PF_W) prot |= PROT_WRITE;
+            if (phdr.p_flags & PF_X) prot |= PROT_EXEC;
+
+            if (mmu_map(task, phdr.p_vaddr, phdr.p_memsz, prot, 0) != 0) {
+                kfree(page);
+                goto fail;
+            }
+        }
+    }
+
+    vfs_close(file);
+
+    // Stack setup (simplified)
+    uint64_t sp = 0x0000fffffffff000ULL;
+    int argc = 0, envc = 0;
+    while (argv[argc]) argc++;
+    while (envp[envc]) envc++;
+
+    sp -= 8 * (argc + envc + 2);
+    uint64_t *arg_env = (uint64_t*)sp;
+
+    char *str_ptr = (char*)(sp - (argc + envc + 2) * 256);
+    uint64_t *argv_ptrs = arg_env;
+    uint64_t *envp_ptrs = arg_env + argc + 1;
+
+    for (int i = 0; i < argc; i++) {
+        strcpy(str_ptr, argv[i]);
+        argv_ptrs[i] = (uint64_t)str_ptr;
+        str_ptr += strlen(argv[i]) + 1;
+    }
+    argv_ptrs[argc] = 0;
+
+    for (int i = 0; i < envc; i++) {
+        strcpy(str_ptr, envp[i]);
+        envp_ptrs[i] = (uint64_t)str_ptr;
+        str_ptr += strlen(envp[i]) + 1;
+    }
+    envp_ptrs[envc] = 0;
+
+    mmu_map(task, sp & PAGE_MASK, PAGE_SIZE * 8, PROT_READ | PROT_WRITE, 0);
+
+    task->sp_el0 = sp;
+    task->elr_el1 = entry;
+    task->spsr_el1 = 0;
+
+    task->regs[0] = argc;
+    task->regs[1] = (uint64_t)argv_ptrs;
+    task->regs[2] = (uint64_t)envp_ptrs;
+
+    debug_print("execve: '%s' loaded at 0x%llx\n", pathname, entry);
+
+    return 0;
+
+fail:
+    vfs_close(file);
+    return -1;
+}
+
+pid_t wait(int *wstatus)
+{
+    return waitpid(-1, wstatus, 0);
+}
+
+pid_t waitpid(pid_t pid, int *wstatus, int options)
+{
+    // Stub – basic implementation
+    return -1;
+}
