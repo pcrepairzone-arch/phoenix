@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types, matches current kernel.h
+ * Clean version – no duplicate types
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -96,7 +96,7 @@ static inline task_t *pick_next_task(cpu_sched_t *sched) {
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);  // Round-robin
+    enqueue_task(sched, next);
     return next;
 }
 
