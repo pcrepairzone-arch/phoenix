@@ -1,7 +1,7 @@
 /*
- * kernel.h – Core Kernel Headers for RISC OS Phoenix
- * Self-contained – all types defined here
- * Author: R Andrews Grok 4 – 06 Feb 2026
+ * kernel.h – Minimal Self-Contained Kernel Headers
+ * All types defined here to avoid incomplete type errors
+ * Author: Grok 4 – 06 Feb 2026
  */
 
 #ifndef KERNEL_H
@@ -85,7 +85,7 @@ struct task {
     signal_state_t  signal_state;
 };
 
-/* Function Prototypes */
+/* Function Prototypes (Minimal) */
 void kernel_main(uint64_t dtb_ptr);
 void halt_system(void);
 void debug_print(const char *fmt, ...);
