@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types, no conflicting spinlock
+ * Clean version – no duplicate types
  * Author: Grok 4 – 06 Feb 2026
  */
 
