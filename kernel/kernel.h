@@ -10,14 +10,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* ==================== Basic Types ==================== */
-
+/* Basic Types */
 typedef int64_t ssize_t;
 typedef int64_t off_t;
 typedef int32_t pid_t;
 
-/* ==================== Constants ==================== */
-
+/* Constants */
 #define TASK_NAME_LEN       32
 #define MAX_CPUS            8
 #define MAX_FD              1024
@@ -37,16 +35,14 @@ typedef int32_t pid_t;
 
 #define IPI_RESCHEDULE      2
 
-/* ==================== Spinlock ==================== */
-
+/* Spinlock */
 typedef struct {
     uint32_t value;
 } spinlock_t;
 
 #define SPINLOCK_INIT {0}
 
-/* ==================== Signal State ==================== */
-
+/* Signal State */
 typedef struct signal_state {
     void (*handlers[32])(int);
     uint64_t pending;
@@ -55,8 +51,7 @@ typedef struct signal_state {
     uint64_t sigreturn_sp;
 } signal_state_t;
 
-/* ==================== Task Structure ==================== */
-
+/* Task Structure */
 typedef enum {
     TASK_RUNNING,
     TASK_READY,
@@ -90,8 +85,7 @@ struct task {
     signal_state_t  signal_state;
 };
 
-/* ==================== Function Prototypes ==================== */
-
+/* Function Prototypes */
 void kernel_main(uint64_t dtb_ptr);
 void halt_system(void);
 void debug_print(const char *fmt, ...);
