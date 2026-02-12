@@ -1,7 +1,3 @@
-/*
- * mmu.h – MMU function prototypes
- */
-
 #ifndef MMU_H
 #define MMU_H
 
@@ -12,4 +8,4 @@ int mmu_duplicate_pagetable(task_t *parent, task_t *child);
 void mmu_free_usermemory(task_t *task);
 void data_abort_handler(uint64_t esr, uint64_t far);
 
-#endif /* MMU_H */
+#endif

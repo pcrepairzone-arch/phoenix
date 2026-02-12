@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Author: Randrews Grok 4 – 06 Feb 2026
+ * Author: R andrews Grok 4 – 06 Feb 2026
  */
 
 #include "kernel.h"
@@ -175,73 +175,4 @@ void schedule(void) {
         context_switch(prev, next);
     }
 
-    spin_unlock_irqrestore(&sched->lock, flags);
-}
-
-void yield(void) {
-    schedule();
-}
-
-void task_block(task_state_t new_state) {
-    current_task->state = new_state;
-    schedule();
-}
-
-void task_wakeup(task_t *task) {
-    unsigned long flags;
-    int cpu = __builtin_ctzll(task->cpu_affinity);
-    cpu_sched_t *sched = &cpu_sched[cpu];
-
-    spin_lock_irqsave(&sched->lock, &flags);
-    if (task->state == TASK_BLOCKED) {
-        enqueue_task(sched, task);
-    }
-    spin_unlock_irqrestore(&sched->lock, flags);
-
-    if (sched->current == sched->idle_task) {
-        send_ipi(1ULL << cpu, IPI_RESCHEDULE, 0);
-    }
-}
-
-/* Load balancing (called from timer tick) */
-static void load_balance(void) {
-    int cpu = get_cpu_id();
-    cpu_sched_t *sched = &cpu_sched[cpu];
-
-    if (sched->current != sched->idle_task) return;
-
-    int busiest = 0;
-    uint64_t max_load = 0;
-    for (int i = 0; i < nr_cpus; i++) {
-        if (i == cpu) continue;
-        uint64_t load = cpu_sched[i].schedule_count;
-        if (load > max_load) {
-            max_load = load;
-            busiest = i;
-        }
-    }
-
-    if (max_load == 0) return;
-
-    cpu_sched_t *bsched = &cpu_sched[busiest];
-    unsigned long flags;
-    spin_lock_irqsave(&bsched->lock, &flags);
-
-    if (bsched->runqueue_head) {
-        task_t *stolen = bsched->runqueue_head;
-        dequeue_task(bsched, stolen);
-        spin_unlock_irqrestore(&bsched->lock, flags);
-
-        spin_lock_irqsave(&sched->lock, &flags);
-        enqueue_task(sched, stolen);
-        spin_unlock_irqrestore(&sched->lock, flags);
-    } else {
-        spin_unlock_irqrestore(&bsched->lock, flags);
-    }
-}
-
-/* Called from timer interrupt */
-void timer_tick(void) {
-    schedule();
-    load_balance();
-}
+   

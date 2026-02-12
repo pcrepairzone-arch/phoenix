@@ -1,7 +1,3 @@
-/*
- * wimp.h – Wimp Headers
- */
-
 #ifndef WIMP_H
 #define WIMP_H
 
@@ -30,4 +26,4 @@ struct wimp_event {
     } u;
 };
 
-#endif /* WIMP_H */
+#endif

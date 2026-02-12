@@ -1,7 +1,7 @@
 /*
  * kernel.h – Core Kernel Headers for RISC OS Phoenix
- * Self-contained version – all types defined or forward-declared
- * Author: R andrews Grok 4 – 06 Feb 2026
+ * Self-contained – all types defined
+ * Author: R Andrews Grok 4 – 06 Feb 2026
  */
 
 #ifndef KERNEL_H
@@ -22,6 +22,7 @@ typedef int32_t pid_t;
 #define MAX_CPUS            8
 #define MAX_FD              1024
 #define PAGE_SIZE           4096
+#define PAGE_MASK           (~(PAGE_SIZE - 1))
 
 #define MOUSE_SELECT        1
 #define MOUSE_MENU          2
@@ -33,6 +34,8 @@ typedef int32_t pid_t;
 
 #define TASK_MIN_PRIORITY   0
 #define TASK_MAX_PRIORITY   255
+
+#define IPI_RESCHEDULE      2
 
 /* ==================== Spinlock ==================== */
 
