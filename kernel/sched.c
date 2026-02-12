@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types
+ * Latest clean version – no duplicate types, no static nr_cpus
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -21,7 +21,7 @@ typedef struct {
 static cpu_sched_t cpu_sched[MAX_CPUS];
 
 extern task_t *current_task;
-extern int nr_cpus;
+extern int nr_cpus;          // declared in kernel.h
 
 /* Initialize scheduler for one CPU */
 void sched_init_cpu(int cpu_id) {
@@ -50,7 +50,7 @@ void sched_init(void) {
     debug_print("Scheduler initialized for %d CPUs\n", nr_cpus);
 }
 
-/* Enqueue task */
+/* Enqueue task into runqueue */
 static inline void enqueue_task(cpu_sched_t *sched, task_t *task) {
     task->state = TASK_READY;
     task->next = NULL;
@@ -81,7 +81,7 @@ static inline void enqueue_task(cpu_sched_t *sched, task_t *task) {
     }
 }
 
-/* Dequeue task */
+/* Dequeue task from runqueue */
 static inline void dequeue_task(cpu_sched_t *sched, task_t *task) {
     if (task->prev) task->prev->next = task->next;
     else sched->runqueue_head = task->next;
@@ -89,14 +89,14 @@ static inline void dequeue_task(cpu_sched_t *sched, task_t *task) {
     else sched->runqueue_tail = task->prev;
 }
 
-/* Pick next task */
+/* Pick next task to run */
 static inline task_t *pick_next_task(cpu_sched_t *sched) {
     if (!sched->runqueue_head) {
         return sched->idle_task;
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);
+    enqueue_task(sched, next);  // Round-robin
     return next;
 }
 
@@ -147,102 +147,4 @@ void context_switch(task_t *prev, task_t *next) {
         "ldp x8,  x9,  [sp], #16\n"
         "ldp x6,  x7,  [sp], #16\n"
         "ldp x4,  x5,  [sp], #16\n"
-        "ldp x2,  x3,  [sp], #16\n"
-        "ldp x0,  x1,  [sp], #16\n"
-        "eret\n"
-        :
-        : "r"(next->sp_el0), "r"(next->elr_el1), "r"(next->spsr_el1)
-        : "memory"
-    );
-}
-
-/* Main scheduler */
-void schedule(void) {
-    int cpu = get_cpu_id();
-    cpu_sched_t *sched = &cpu_sched[cpu];
-    unsigned long flags;
-
-    spin_lock_irqsave(&sched->lock, &flags);
-
-    task_t *prev = sched->current;
-    task_t *next = pick_next_task(sched);
-
-    prev->state = TASK_READY;
-    next->state = TASK_RUNNING;
-    sched->current = next;
-    sched->schedule_count++;
-
-    if (prev != next) {
-        context_switch(prev, next);
-    }
-
-    spin_unlock_irqrestore(&sched->lock, flags);
-}
-
-void yield(void) {
-    schedule();
-}
-
-void task_block(task_state_t new_state) {
-    current_task->state = new_state;
-    schedule();
-}
-
-void task_wakeup(task_t *task) {
-    unsigned long flags;
-    int cpu = __builtin_ctzll(task->cpu_affinity);
-    cpu_sched_t *sched = &cpu_sched[cpu];
-
-    spin_lock_irqsave(&sched->lock, &flags);
-    if (task->state == TASK_BLOCKED) {
-        enqueue_task(sched, task);
-    }
-    spin_unlock_irqrestore(&sched->lock, flags);
-
-    if (sched->current == sched->idle_task) {
-        send_ipi(1ULL << cpu, IPI_RESCHEDULE, 0);
-    }
-}
-
-/* Load balancing */
-static void load_balance(void) {
-    int cpu = get_cpu_id();
-    cpu_sched_t *sched = &cpu_sched[cpu];
-
-    if (sched->current != sched->idle_task) return;
-
-    int busiest = 0;
-    uint64_t max_load = 0;
-    for (int i = 0; i < nr_cpus; i++) {
-        if (i == cpu) continue;
-        uint64_t load = cpu_sched[i].schedule_count;
-        if (load > max_load) {
-            max_load = load;
-            busiest = i;
-        }
-    }
-
-    if (max_load == 0) return;
-
-    cpu_sched_t *bsched = &cpu_sched[busiest];
-    unsigned long flags;
-    spin_lock_irqsave(&bsched->lock, &flags);
-
-    if (bsched->runqueue_head) {
-        task_t *stolen = bsched->runqueue_head;
-        dequeue_task(bsched, stolen);
-        spin_unlock_irqrestore(&bsched->lock, flags);
-
-        spin_lock_irqsave(&sched->lock, &flags);
-        enqueue_task(sched, stolen);
-        spin_unlock_irqrestore(&sched->lock, flags);
-    } else {
-        spin_unlock_irqrestore(&bsched->lock, flags);
-    }
-}
-
-/* Timer tick */
-void timer_tick(void) {
-    schedule();
-    load_balance();
-}
+        "ldp x2
