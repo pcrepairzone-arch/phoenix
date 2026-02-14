@@ -1,6 +1,6 @@
 /*
  * kernel.h – Complete Self-Contained Kernel Headers
- * All prototypes added to eliminate implicit declaration errors
+ * cpu_sched_t moved here so boot.c and task.c can see it
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -98,6 +98,19 @@ struct task {
     signal_state_t  signal_state;
 };
 
+/* Scheduler structure (moved here) */
+typedef struct {
+    task_t     *current;
+    task_t     *idle_task;
+    task_t     *runqueue_head;
+    task_t     *runqueue_tail;
+    spinlock_t  lock;
+    int         cpu_id;
+    uint64_t    schedule_count;
+} cpu_sched_t;
+
+extern cpu_sched_t cpu_sched[MAX_CPUS];
+
 /* Function Prototypes */
 void kernel_main(uint64_t dtb_ptr);
 void debug_print(const char *fmt, ...);
@@ -149,9 +162,7 @@ void netsurf_task(void);
 
 extern task_t *current_task;
 extern int nr_cpus;
-extern cpu_sched_t cpu_sched[];   // Make cpu_sched visible to boot.c and kernel.c
 
-typedef struct cpu_sched_t cpu_sched_t;
 extern cpu_sched_t cpu_sched[MAX_CPUS];
 
 #endif /* KERNEL_H */
