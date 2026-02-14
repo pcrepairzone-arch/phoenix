@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types, fixed assembly, no static nr_cpus
+ * Latest clean version – fixed assembly, no duplicate types, no static nr_cpus
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -100,7 +100,7 @@ static inline task_t *pick_next_task(cpu_sched_t *sched) {
     return next;
 }
 
-/* Context switch - Fixed assembly */
+/* Context switch */
 void context_switch(task_t *prev, task_t *next) {
     current_task = next;
 
