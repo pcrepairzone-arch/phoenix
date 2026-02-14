@@ -151,4 +151,7 @@ extern task_t *current_task;
 extern int nr_cpus;
 extern cpu_sched_t cpu_sched[];   // Make cpu_sched visible to boot.c and kernel.c
 
+typedef struct cpu_sched_t cpu_sched_t;
+extern cpu_sched_t cpu_sched[MAX_CPUS];
+
 #endif /* KERNEL_H */

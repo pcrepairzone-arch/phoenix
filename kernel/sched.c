@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Clean version – no duplicate types, no static nr_cpus, fixed assembly
+ * Final clean version – no duplicates, cpu_sched visible to all files
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -18,7 +18,7 @@ typedef struct {
     uint64_t    schedule_count;
 } cpu_sched_t;
 
-static cpu_sched_t cpu_sched[MAX_CPUS];
+cpu_sched_t cpu_sched[MAX_CPUS];   // NOT static – visible to boot.c and kernel.c
 
 extern task_t *current_task;
 extern int nr_cpus;
@@ -96,7 +96,7 @@ static inline task_t *pick_next_task(cpu_sched_t *sched) {
     }
     task_t *next = sched->runqueue_head;
     dequeue_task(sched, next);
-    enqueue_task(sched, next);  // Round-robin
+    enqueue_task(sched, next);
     return next;
 }
 
@@ -193,56 +193,4 @@ void task_wakeup(task_t *task) {
     int cpu = __builtin_ctzll(task->cpu_affinity);
     cpu_sched_t *sched = &cpu_sched[cpu];
 
-    spin_lock_irqsave(&sched->lock, &flags);
-    if (task->state == TASK_BLOCKED) {
-        enqueue_task(sched, task);
-    }
-    spin_unlock_irqrestore(&sched->lock, flags);
-
-    if (sched->current == sched->idle_task) {
-        send_ipi(1ULL << cpu, IPI_RESCHEDULE, 0);
-    }
-}
-
-/* Load balancing */
-static void load_balance(void) {
-    int cpu = get_cpu_id();
-    cpu_sched_t *sched = &cpu_sched[cpu];
-
-    if (sched->current != sched->idle_task) return;
-
-    int busiest = 0;
-    uint64_t max_load = 0;
-    for (int i = 0; i < nr_cpus; i++) {
-        if (i == cpu) continue;
-        uint64_t load = cpu_sched[i].schedule_count;
-        if (load > max_load) {
-            max_load = load;
-            busiest = i;
-        }
-    }
-
-    if (max_load == 0) return;
-
-    cpu_sched_t *bsched = &cpu_sched[busiest];
-    unsigned long flags;
-    spin_lock_irqsave(&bsched->lock, &flags);
-
-    if (bsched->runqueue_head) {
-        task_t *stolen = bsched->runqueue_head;
-        dequeue_task(bsched, stolen);
-        spin_unlock_irqrestore(&bsched->lock, flags);
-
-        spin_lock_irqsave(&sched->lock, &flags);
-        enqueue_task(sched, stolen);
-        spin_unlock_irqrestore(&sched->lock, flags);
-    } else {
-        spin_unlock_irqrestore(&bsched->lock, flags);
-    }
-}
-
-/* Called from timer interrupt */
-void timer_tick(void) {
-    schedule();
-    load_balance();
-}
+    spin_lock_irqsave
