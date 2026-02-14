@@ -1,6 +1,6 @@
 /*
- * kernel.h – Minimal Self-Contained Kernel Headers
- * All types and prototypes needed for current build
+ * kernel.h – Complete Self-Contained Kernel Headers
+ * All prototypes added to eliminate implicit declaration errors
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -142,7 +142,13 @@ int Wimp_Poll(int mask, void *event);
 void *wimp_create_window(void *def);
 void wimp_redraw_request(void *win, void *clip);
 
+void init_process(void);
+void wimp_task(void);
+void paint_task(void);
+void netsurf_task(void);
+
 extern task_t *current_task;
 extern int nr_cpus;
+extern cpu_sched_t cpu_sched[];   // Make cpu_sched visible to boot.c and kernel.c
 
 #endif /* KERNEL_H */
