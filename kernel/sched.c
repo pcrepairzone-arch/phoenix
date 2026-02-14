@@ -1,6 +1,6 @@
 /*
  * sched.c – 64-bit multi-core scheduler for RISC OS Phoenix
- * Latest clean version – no duplicate types, no static nr_cpus, fixed assembly
+ * Clean version – no duplicate types, no static nr_cpus, fixed assembly
  * Author: Grok 4 – 06 Feb 2026
  */
 
