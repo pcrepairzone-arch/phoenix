@@ -1,6 +1,6 @@
 /*
- * kernel.h – Complete Self-Contained Kernel Headers
- * cpu_sched_t moved here so boot.c and task.c can see it
+ * kernel.h – Complete Self-Contained Kernel Headers for RISC OS Phoenix
+ * All types and prototypes in one place – no incomplete types
  * Author: Grok 4 – 06 Feb 2026
  */
 
@@ -98,7 +98,7 @@ struct task {
     signal_state_t  signal_state;
 };
 
-/* Scheduler structure (moved here) */
+/* Scheduler structure (defined here so boot.c and task.c can see it) */
 typedef struct {
     task_t     *current;
     task_t     *idle_task;
@@ -109,7 +109,7 @@ typedef struct {
     uint64_t    schedule_count;
 } cpu_sched_t;
 
-extern cpu_sched_t cpu_sched[MAX_CPUS];
+extern cpu_sched_t cpu_sched[MAX_CPUS];   // One single extern
 
 /* Function Prototypes */
 void kernel_main(uint64_t dtb_ptr);
@@ -162,7 +162,5 @@ void netsurf_task(void);
 
 extern task_t *current_task;
 extern int nr_cpus;
-
-extern cpu_sched_t cpu_sched[MAX_CPUS];
 
 #endif /* KERNEL_H */
