@@ -1,3 +1,9 @@
+/*
+ * kernel.h – Minimal Self-Contained Kernel Headers
+ * All types and prototypes needed for current build
+ * Author: Grok 4 – 06 Feb 2026
+ */
+
 #ifndef KERNEL_H
 #define KERNEL_H
 
@@ -97,6 +103,7 @@ void kernel_main(uint64_t dtb_ptr);
 void debug_print(const char *fmt, ...);
 
 void sched_init(void);
+void sched_init_cpu(int cpu_id);
 void schedule(void);
 void yield(void);
 void task_block(task_state_t state);
@@ -113,8 +120,27 @@ void mmu_init_task(task_t *task);
 int mmu_map(task_t *task, uint64_t virt, uint64_t size, int prot, int guard);
 int mmu_duplicate_pagetable(task_t *parent, task_t *child);
 void mmu_free_usermemory(task_t *task);
+void mmu_free_pagetable(task_t *task);
 
 void timer_init(void);
+void timer_init_cpu(void);
+void timer_tick(void);
+
+void irq_init(void);
+
+void device_tree_parse(uint64_t dtb_ptr);
+int detect_nr_cpus(void);
+
+void filecore_init(void);
+
+void *kmalloc(size_t size);
+void kfree(void *ptr);
+
+void send_ipi(uint64_t target_cpus, int ipi_id, uint64_t arg);
+
+int Wimp_Poll(int mask, void *event);
+void *wimp_create_window(void *def);
+void wimp_redraw_request(void *win, void *clip);
 
 extern task_t *current_task;
 extern int nr_cpus;
